@@ -58,13 +58,22 @@ abstract contract ShutdownScript {
         uint256 secondaryEth;
     }
 
+    /// Every amount has to be positive. Aragon's Vault refuses a zero transfer, and one reverting call reverts the
+    /// whole script, so a row with nothing to move has to be dropped from the script rather than left in with a zero.
     function readAmounts() internal view returns (Amounts memory amounts) {
-        amounts.mint = TARGET_SUPPLY - API3.totalSupply();
+        uint256 supply = API3.totalSupply();
+        require(supply < TARGET_SUPPLY, "ShutdownScript: supply already at the target");
+        amounts.mint = TARGET_SUPPLY - supply;
         amounts.agentApi3 = API3.balanceOf(address(AGENT));
         amounts.secondaryUsdc = USDC.balanceOf(address(AGENT_SECONDARY));
         amounts.secondaryPnk = PNK.balanceOf(address(AGENT_SECONDARY));
         amounts.secondaryWpokt = WPOKT.balanceOf(address(AGENT_SECONDARY));
         amounts.secondaryEth = address(AGENT_SECONDARY).balance;
+        require(amounts.agentApi3 > 0, "ShutdownScript: no API3 to move");
+        require(amounts.secondaryUsdc > 0, "ShutdownScript: no USDC to move");
+        require(amounts.secondaryPnk > 0, "ShutdownScript: no PNK to move");
+        require(amounts.secondaryWpokt > 0, "ShutdownScript: no wPOKT to move");
+        require(amounts.secondaryEth > 0, "ShutdownScript: no ETH to move");
     }
 
     /// The `metadata` argument of `newVote`, in the scheme the DAO dashboard decodes.
