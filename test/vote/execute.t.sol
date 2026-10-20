@@ -40,4 +40,22 @@ contract Vote_Execute_Test is Base_Test {
         );
         console.log("overshoot burned (API3)", overshoot / 1e18);
     }
+
+    function test_WhenAHolderBurnsAPI3BeforeTheVoteExecutes() external {
+        // it should land below the target by the burned amount with no minter left to make it up.
+        // Burning is self-service for any holder, the Vault Safe stands in for one here
+        uint256 burned = 1_000e18;
+        vm.startPrank(VAULT);
+        API3.updateBurnerStatus(true);
+        API3.burn(burned);
+        vm.stopPrank();
+        executeNow();
+        assertEq(API3.totalSupply(), TARGET_SUPPLY - burned, "the supply lands short by the burn");
+        assertEq(API3.owner(), DEAD, "token owner is the dead address");
+        assertFalse(API3.getMinterStatus(address(POOL)), "pool cannot mint");
+        assertFalse(API3.getMinterStatus(address(AGENT)), "agent cannot mint");
+        vm.prank(VAULT);
+        vm.expectRevert();
+        API3.updateMinterStatus(VAULT, true);
+    }
 }

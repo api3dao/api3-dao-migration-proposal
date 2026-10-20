@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test, Vm, console} from "forge-std/Test.sol";
 import "../src/ShutdownScript.sol";
 
 /// @notice Shared fixture of the fork tests. Forks mainnet, checks the permissions Appendix A relies on, takes the
@@ -17,6 +17,8 @@ import "../src/ShutdownScript.sol";
 /// burns the overshoot. Fork only, nothing here touches mainnet.
 abstract contract Base_Test is Test, ShutdownScript {
     uint256 constant NO_VOTE = type(uint256).max;
+    bytes32 constant START_VOTE_TOPIC = keccak256("StartVote(uint256,address,string)");
+    uint8 constant VOTER_STATE_YEA = 1;
 
     address[] voters;
     address[] stakers;
@@ -25,6 +27,10 @@ abstract contract Base_Test is Test, ShutdownScript {
     string generatedDir;
     bool voteOnChain;
     uint256 voteId;
+    /// Set in a test contract's constructor to have setUp stop one voter short of deciding the vote. The test then
+    /// casts the vote that takes yea past half of all voting power, with `crossingVoter`.
+    bool stopOneShort;
+    address crossingVoter;
     Amounts amounts;
     uint256 vaultApi3Before;
     uint256 agentSafeUsdcBefore;
@@ -93,6 +99,8 @@ abstract contract Base_Test is Test, ShutdownScript {
             assertTrue(open, "the vote is open");
             assertFalse(executed, "the vote is not executed");
             assertEq(keccak256(onChain), keccak256(script), "the vote's script is the generated script");
+            _assertStartVote();
+            _assertAmountsStillHold();
             console.log("vote", voteId, "on the chain, snapshot block", snapshotBlock);
             console.log("vote start", startDate);
             return;
@@ -109,6 +117,34 @@ abstract contract Base_Test is Test, ShutdownScript {
             metadata,
             "metadata.txt is the title and description in the dashboard's version 3 scheme"
         );
+    }
+
+    /// `getVote` returns neither the creator nor the metadata, only the StartVote log has them. A vote's snapshot
+    /// block is the block before the one it was created in, so the log is in the block after it.
+    function _assertStartVote() internal view {
+        (,,, uint64 snapshotBlock,,,,,,) = VOTING.getVote(voteId);
+        bytes32[] memory topics = new bytes32[](2);
+        topics[0] = START_VOTE_TOPIC;
+        topics[1] = bytes32(voteId);
+        Vm.EthGetLogs[] memory logs = vm.eth_getLogs(snapshotBlock + 1, snapshotBlock + 1, address(VOTING), topics);
+        assertEq(logs.length, 1, "one StartVote log for the vote");
+        assertEq(address(uint160(uint256(logs[0].topics[2]))), VAULT, "the Vault Safe created the vote");
+        assertEq(abi.decode(logs[0].data, (string)), metadata, "the vote carries the committed metadata");
+    }
+
+    /// The amounts in the posted script are the balances when the bytes were built. A balance that fell since makes
+    /// the whole script revert at execution, so a drift fails here, by name, rather than as a bare revert later.
+    function _assertAmountsStillHold() internal view {
+        assertEq(
+            API3.totalSupply(), TARGET_SUPPLY - amounts.mint, "the supply has not moved since the bytes were built"
+        );
+        assertEq(API3.balanceOf(address(AGENT)), amounts.agentApi3, "the primary Agent's API3 is the amount posted");
+        assertEq(USDC.balanceOf(address(AGENT_SECONDARY)), amounts.secondaryUsdc, "secondary Agent USDC is the amount");
+        assertEq(PNK.balanceOf(address(AGENT_SECONDARY)), amounts.secondaryPnk, "secondary Agent PNK is the amount");
+        assertEq(
+            WPOKT.balanceOf(address(AGENT_SECONDARY)), amounts.secondaryWpokt, "secondary Agent wPOKT is the amount"
+        );
+        assertEq(address(AGENT_SECONDARY).balance, amounts.secondaryEth, "secondary Agent ETH is the amount");
     }
 
     /// The permissions Appendix A relies on, as they stand on chain.
@@ -151,18 +187,31 @@ abstract contract Base_Test is Test, ShutdownScript {
 
     // ------------------------------------------------------------ passing and executing
 
-    /// Votes yea with the listed voters, in order, until yea exceeds half of all voting power.
+    /// Votes yea with the listed voters, in order, until yea exceeds half of all voting power. With `stopOneShort`
+    /// it stops before the voter whose yea would do that and leaves them in `crossingVoter`.
     function _pass(uint256 id) internal {
         (,,, uint64 snapshotBlock,,, uint256 yea,, uint256 votingPower,) = VOTING.getVote(id);
-        for (uint256 i; i < voters.length && yea * PCT_BASE / votingPower <= PCT_BASE / 2; i++) {
-            if (POOL.userVotingPowerAt(voters[i], snapshotBlock) == 0) continue;
+        for (uint256 i; i < voters.length && !_isDecided(yea, votingPower); i++) {
+            uint256 power = POOL.userVotingPowerAt(voters[i], snapshotBlock);
+            if (power == 0 || VOTING.getVoterState(id, voters[i]) == VOTER_STATE_YEA) continue;
+            if (stopOneShort && _isDecided(yea + power, votingPower)) {
+                crossingVoter = voters[i];
+                assertFalse(VOTING.canExecute(id), "one voter short, the vote is not decided");
+                console.log("vote", id, "one voter short, yea % of voting power", yea * 100 / votingPower);
+                return;
+            }
             vm.prank(voters[i]);
             VOTING.vote(id, true, false);
             (,,,,,, yea,,,) = VOTING.getVote(id);
         }
-        assertGt(yea * PCT_BASE / votingPower, PCT_BASE / 2, "yea exceeds half of all voting power");
+        assertTrue(_isDecided(yea, votingPower), "yea exceeds half of all voting power");
         assertTrue(VOTING.canExecute(id), "a decided primary can execute before the vote ends");
         console.log("vote", id, "yea % of voting power", yea * 100 / votingPower);
+    }
+
+    /// Api3Voting's test for a decided vote: yea over all voting power above the required support, 50%.
+    function _isDecided(uint256 yea, uint256 votingPower) internal pure returns (bool) {
+        return yea * PCT_BASE / votingPower > PCT_BASE / 2;
     }
 
     /// The intended path: executed before the pool mints another epoch.

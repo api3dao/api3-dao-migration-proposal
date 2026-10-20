@@ -55,6 +55,20 @@ contract Vote_Script_Test is Base_Test {
         assertGt(m.length, second + 1, "the description is not empty");
     }
 
+    function test_GivenTheSecondaryAgentHoldsNoneOfATokenTheScriptMoves() external {
+        // it should refuse to build the bytes.
+        // Aragon's Vault reverts on a zero transfer, which would take the whole script down with it
+        uint256 balance = USDC.balanceOf(address(AGENT_SECONDARY));
+        vm.prank(address(AGENT_SECONDARY));
+        USDC.transfer(address(0xBEEF), balance);
+        vm.expectRevert(bytes("ShutdownScript: no USDC to move"));
+        this.build();
+    }
+
+    function build() external view returns (bytes memory) {
+        return buildScript(readAmounts());
+    }
+
     function test_GivenAGeneratedScriptDirectoryIsNamed() external {
         // it should equal the bytes the source builds at the block the amounts were read at.
         // it should carry the metadata built from proposal/title.txt and proposal/description.md.
@@ -68,11 +82,15 @@ contract Vote_Script_Test is Base_Test {
     function test_GivenAVoteIdOnTheChainIsNamed() external {
         // it should be open and not executed.
         // it should equal the generated script byte for byte.
+        // it should have been created by the Vault Safe with the committed metadata.
+        // it should move balances that still equal the amounts in the script.
         if (!voteOnChain) vm.skip(true);
         (bool open, bool executed,,,,,,,, bytes memory onChain) = VOTING.getVote(voteId);
         assertTrue(open, "open");
         assertFalse(executed, "not executed");
         assertEq(onChain, script, "the posted script is the generated script");
+        _assertStartVote();
+        _assertAmountsStillHold();
     }
 
     /// Walks a CallsScript: the 4 byte spec id, then entries of a 20 byte target, a 4 byte calldata length and the

@@ -2,9 +2,13 @@ Vote_Script_Test
 ├── it should start with the CallsScript spec id and hold 28 calls.
 ├── it should call the ACL and the primary Agent directly and everything else through the primary Agent.
 ├── it should carry version 3 metadata with the title and the description.
+├── given the secondary Agent holds none of a token the script moves
+│   └── it should refuse to build the bytes.
 ├── given a generated script directory is named
 │   ├── it should equal the bytes the source builds at the block the amounts were read at.
 │   └── it should carry the metadata built from proposal/title.txt and proposal/description.md.
 └── given a vote id on the chain is named
     ├── it should be open and not executed.
-    └── it should equal the generated script byte for byte.
+    ├── it should equal the generated script byte for byte.
+    ├── it should have been created by the Vault Safe with the committed metadata.
+    └── it should move balances that still equal the amounts in the script.
