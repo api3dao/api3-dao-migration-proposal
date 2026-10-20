@@ -1,0 +1,18 @@
+[profile.default]
+src = 'src'
+test = 'test'
+script = 'script'
+out = 'out'
+libs = ['lib']
+remappings = ['forge-std/=lib/forge-std/src/']
+solc = '0.8.20'
+fs_permissions = [
+  { access = 'read', path = './test/data' },
+  { access = 'read', path = './proposal' },
+  { access = 'read-write', path = './proposal/generated' },
+]
+# Resolved against the alias below, so plain `forge test` forks mainnet once ETH_RPC_URL is set.
+eth_rpc_url = "mainnet"
+
+[rpc_endpoints]
+mainnet = "${ETH_RPC_URL}"
