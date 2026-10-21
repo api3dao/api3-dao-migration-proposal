@@ -4,7 +4,7 @@ Everything behind the primary vote that winds down the Aragon-based API3 DAO and
 
 ## Running
 
-Needs [Foundry](https://getfoundry.sh) and a mainnet RPC in `ETH_RPC_URL`, an archive one if you pin a historical block. [bulloak](https://github.com/alexfertel/bulloak) checks the test trees, see below.
+Needs [Foundry](https://getfoundry.sh) and a mainnet RPC in `ETH_RPC_URL`, an archive one if you pin a historical block. [bulloak](https://github.com/alexfertel/bulloak) checks the test trees, see below. The decoder and the dashboard preview need Node and pnpm, nothing else does.
 
 ```bash
 ./setup.sh
@@ -40,7 +40,6 @@ The tests follow the branching tree technique: each `.tree` file spells out what
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [test/vote/script.tree](test/vote/script.tree)     | the bytes: the CallsScript shape and its 28 calls, every call on the ACL or the primary Agent, version 3 metadata, and the generated files against the source and the chain |
 | [test/vote/execute.tree](test/vote/execute.tree)   | the outcome on both paths: supply exactly 200,000,000, the token frozen, both agents emptied into the multisigs, the Vault credited, the overshoot burned on the late path, a burn before execution left as it is |
-| [test/vote/crossing.tree](test/vote/crossing.tree) | the vote that takes yea past 50%: it executes the script in its own transaction when cast with `executesIfDecided`, as the dashboard does, and reverts with the script when a secondary Agent balance fell after the bytes were built, until the balance is restored |
 | [test/dao/closed.tree](test/dao/closed.tree)       | the old DAO after the vote: no vote can be created, support and quorum at the maximum, the root permissions gone, even for the primary voting app itself |
 | [test/pool/rewards.tree](test/pool/rewards.tree)   | `mintReward()` mints nothing after the shutdown, the total stake holds and the epoch cursor keeps advancing                                           |
 | [test/pool/staking.tree](test/pool/staking.tree)   | stakers keep every right but voting: a full exit, locked rewards unlocking over 52 epochs, a new staker's round trip, a partial exit and re-entry over a year |
@@ -53,7 +52,7 @@ The tests follow the branching tree technique: each `.tree` file spells out what
 
 ```bash
 forge script script/CreateVote.s.sol --rpc-url mainnet
-./scripts/decode-script.py proposal/generated/script.hex
+node scripts/decode-script.mjs proposal/generated/script.hex
 ```
 
 The first command writes `proposal/generated/`: `script.hex`, `script-hash.txt` (its keccak256, which the dashboard has to know to show the proposal), `metadata.txt`, `amounts.json` with the block the amounts were read at, and `vote-id.txt`, which is only meaningful after a broadcast (see below). Without `--broadcast` the `newVote` call is simulated and nothing is sent. The second prints the calls as a table, one row per Appendix A call, with the roles, addresses and amounts named, and prints anything it does not recognise raw. It is a reading aid: the byte for byte comparisons are the tests below.
@@ -70,7 +69,7 @@ Everything below is read-only and needs no account, only an RPC. The same suite 
 
 3. **The posted vote.** `VOTE_ID=<id> forge test` reads the script of that vote from the primary voting app with `getVote`, checks that the vote is open and not executed and that its script equals `proposal/generated/script.hex` byte for byte, reads the vote's `StartVote` log to check that the Vault Safe created it with the metadata in `metadata.txt` (`getVote` returns neither the creator nor the metadata), checks that the balances the script moves still equal the amounts in it, then passes that very vote with the listed voters and runs the suite on it. Run it in the epoch the vote was posted in, so the amounts in the vote are still the balances, otherwise the fallback path in `test/vote/execute.tree` is the one that applies. This mode checks the chain against the files, mode 2 checks the files against the source, so a verifier runs both. Run it on the tree tests, `--match-path 'test/*/*.t.sol'`: the older `test/ShutdownProposal.t.sol` always posts a vote of its own from the first listed voter, the Vault Safe once it has posted the real one, and fails on the pool's one week proposal cooldown.
 
-To read the posted bytes without Foundry's test runner, `cast call 0xDb6C812E439ce5c740570578681ea7aaDba5170b "getVote(uint256)(bool,bool,uint64,uint64,uint64,uint64,uint256,uint256,uint256,bytes)" <id> --rpc-url $ETH_RPC_URL` prints them last, and `./scripts/decode-script.py` turns them into the Appendix A table. The DAO dashboard shows the proposal only if `script-hash.txt` is on its allowlist, so the hash is one more thing to compare.
+To read the posted bytes without Foundry's test runner, `cast call 0xDb6C812E439ce5c740570578681ea7aaDba5170b "getVote(uint256)(bool,bool,uint64,uint64,uint64,uint64,uint256,uint256,uint256,bytes)" <id> --rpc-url $ETH_RPC_URL` prints them last, and `node scripts/decode-script.mjs <bytes>` turns them into the Appendix A table. The DAO dashboard shows the proposal only if `script-hash.txt` is on its allowlist, so the hash is one more thing to compare.
 
 ## Previewing the vote in the DAO dashboard
 
