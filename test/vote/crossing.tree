@@ -1,9 +1,0 @@
-Vote_Crossing_Test
-├── when the crossing voter votes with executesIfDecided
-│   └── it should execute the script in that same transaction.
-├── when the crossing voter votes without executesIfDecided
-│   └── it should leave the vote for anyone to execute.
-└── when a token balance of the secondary Agent fell after the bytes were built
-    ├── it should revert the crossing vote cast with executesIfDecided.
-    ├── it should accept the crossing vote cast without it and leave the vote decided.
-    └── it should revert executeVote until the balance is restored.

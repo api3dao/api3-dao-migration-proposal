@@ -18,7 +18,6 @@ import "../src/ShutdownScript.sol";
 abstract contract Base_Test is Test, ShutdownScript {
     uint256 constant NO_VOTE = type(uint256).max;
     bytes32 constant START_VOTE_TOPIC = keccak256("StartVote(uint256,address,string)");
-    uint8 constant VOTER_STATE_YEA = 1;
 
     address[] voters;
     address[] stakers;
@@ -27,10 +26,6 @@ abstract contract Base_Test is Test, ShutdownScript {
     string generatedDir;
     bool voteOnChain;
     uint256 voteId;
-    /// Set in a test contract's constructor to have setUp stop one voter short of deciding the vote. The test then
-    /// casts the vote that takes yea past half of all voting power, with `crossingVoter`.
-    bool stopOneShort;
-    address crossingVoter;
     Amounts amounts;
     uint256 vaultApi3Before;
     uint256 agentSafeUsdcBefore;
@@ -187,31 +182,18 @@ abstract contract Base_Test is Test, ShutdownScript {
 
     // ------------------------------------------------------------ passing and executing
 
-    /// Votes yea with the listed voters, in order, until yea exceeds half of all voting power. With `stopOneShort`
-    /// it stops before the voter whose yea would do that and leaves them in `crossingVoter`.
+    /// Votes yea with the listed voters, in order, until yea exceeds half of all voting power.
     function _pass(uint256 id) internal {
         (,,, uint64 snapshotBlock,,, uint256 yea,, uint256 votingPower,) = VOTING.getVote(id);
-        for (uint256 i; i < voters.length && !_isDecided(yea, votingPower); i++) {
-            uint256 power = POOL.userVotingPowerAt(voters[i], snapshotBlock);
-            if (power == 0 || VOTING.getVoterState(id, voters[i]) == VOTER_STATE_YEA) continue;
-            if (stopOneShort && _isDecided(yea + power, votingPower)) {
-                crossingVoter = voters[i];
-                assertFalse(VOTING.canExecute(id), "one voter short, the vote is not decided");
-                console.log("vote", id, "one voter short, yea % of voting power", yea * 100 / votingPower);
-                return;
-            }
+        for (uint256 i; i < voters.length && yea * PCT_BASE / votingPower <= PCT_BASE / 2; i++) {
+            if (POOL.userVotingPowerAt(voters[i], snapshotBlock) == 0) continue;
             vm.prank(voters[i]);
             VOTING.vote(id, true, false);
             (,,,,,, yea,,,) = VOTING.getVote(id);
         }
-        assertTrue(_isDecided(yea, votingPower), "yea exceeds half of all voting power");
+        assertGt(yea * PCT_BASE / votingPower, PCT_BASE / 2, "yea exceeds half of all voting power");
         assertTrue(VOTING.canExecute(id), "a decided primary can execute before the vote ends");
         console.log("vote", id, "yea % of voting power", yea * 100 / votingPower);
-    }
-
-    /// Api3Voting's test for a decided vote: yea over all voting power above the required support, 50%.
-    function _isDecided(uint256 yea, uint256 votingPower) internal pure returns (bool) {
-        return yea * PCT_BASE / votingPower > PCT_BASE / 2;
     }
 
     /// The intended path: executed before the pool mints another epoch.
