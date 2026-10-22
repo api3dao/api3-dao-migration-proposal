@@ -60,6 +60,7 @@ interface IApi3Token {
     function mint(address, uint256) external;
     function transferOwnership(address) external;
     function updateBurnerStatus(bool) external;
+    function getBurnerStatus(address) external view returns (bool);
     function burn(uint256) external;
 }
 
