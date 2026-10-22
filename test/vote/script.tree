@@ -6,9 +6,11 @@ Vote_Script_Test
 │   └── it should refuse to build the bytes.
 ├── given a generated script directory is named
 │   ├── it should equal the bytes the source builds at the block the amounts were read at.
-│   └── it should carry the metadata built from proposal/title.txt and proposal/description.md.
+│   ├── it should carry the metadata built from proposal/title.txt and proposal/description.md.
+│   └── it should move the API3 to a Treasury Safe that is deployed.
 └── given a vote id on the chain is named
     ├── it should be open and not executed.
     ├── it should equal the generated script byte for byte.
     ├── it should have been created by the Vault Safe with the committed metadata.
-    └── it should move balances that still equal the amounts in the script.
+    ├── it should move balances that still equal the amounts in the script.
+    └── it should move the API3 to a Treasury Safe that is deployed.

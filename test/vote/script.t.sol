@@ -72,11 +72,13 @@ contract Vote_Script_Test is Base_Test {
     function test_GivenAGeneratedScriptDirectoryIsNamed() external {
         // it should equal the bytes the source builds at the block the amounts were read at.
         // it should carry the metadata built from proposal/title.txt and proposal/description.md.
+        // it should move the API3 to a Treasury Safe that is deployed.
         if (bytes(generatedDir).length == 0 || voteOnChain) vm.skip(true);
         assertEq(buildScript(readAmounts()), script, "script.hex against the source at its block");
         string memory title = vm.readLine("proposal/title.txt");
         vm.closeFile("proposal/title.txt");
         assertEq(buildMetadata(title, vm.readFile("proposal/description.md")), metadata, "metadata.txt");
+        assertGt(TREASURY_SAFE.code.length, 0, "the Treasury Safe is deployed");
     }
 
     function test_GivenAVoteIdOnTheChainIsNamed() external {
@@ -84,6 +86,7 @@ contract Vote_Script_Test is Base_Test {
         // it should equal the generated script byte for byte.
         // it should have been created by the Vault Safe with the committed metadata.
         // it should move balances that still equal the amounts in the script.
+        // it should move the API3 to a Treasury Safe that is deployed.
         if (!voteOnChain) vm.skip(true);
         (bool open, bool executed,,,,,,,, bytes memory onChain) = VOTING.getVote(voteId);
         assertTrue(open, "open");
@@ -91,6 +94,7 @@ contract Vote_Script_Test is Base_Test {
         assertEq(onChain, script, "the posted script is the generated script");
         _assertStartVote();
         _assertAmountsStillHold();
+        assertGt(TREASURY_SAFE.code.length, 0, "the Treasury Safe is deployed");
     }
 
     /// Walks a CallsScript: the 4 byte spec id, then entries of a 20 byte target, a 4 byte calldata length and the

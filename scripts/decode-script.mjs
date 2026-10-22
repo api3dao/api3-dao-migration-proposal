@@ -20,6 +20,7 @@ const NAMES = {
   '0x1e7ecc6d3b5b4cfdfc71cb7c3ea9ac4a55f4195a': 'ACL',
   '0x593ea926ee9820a933488b6a288433c387d06dba': 'Kernel',
   '0x8e03609ed680b237c7b6f8020472ca0687308b24': 'Vault Safe',
+  '0x00000000000000000000000000000000deadbeef': 'Treasury Safe (placeholder, the Safe is not created yet)',
   '0xbbe0de9757f93e3306adbfebe906ab285edd13da': 'agent multisig',
   '0x000000000000000000000000000000000000dead': 'dead address',
   '0xffffffffffffffffffffffffffffffffffffffff': 'any address',

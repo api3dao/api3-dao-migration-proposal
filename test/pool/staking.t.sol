@@ -91,7 +91,7 @@ contract Pool_Staking_Test is Executed_Test {
         // it should leave the total supply untouched.
         address user = makeAddr("newStaker");
         uint256 amount = 1_000_000e18;
-        vm.prank(VAULT);
+        vm.prank(TREASURY_SAFE);
         API3.transfer(user, amount);
 
         vm.startPrank(user);

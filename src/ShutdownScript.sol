@@ -18,7 +18,14 @@ abstract contract ShutdownScript {
     IAgent constant AGENT_SECONDARY = IAgent(0x556ECbb0311D350491Ba0EC7E019c354D7723CE0);
     IACL constant ACL = IACL(0x1E7eCC6D3B5b4cfDfC71CB7C3eA9AC4A55F4195A);
     IKernel constant KERNEL = IKernel(0x593EA926ee9820A933488B6A288433C387D06dba);
+    /// Posts the vote. It stakes nothing but holds the pool shares delegated to it, which clear the proposal
+    /// threshold, and it votes on Snapshot with that delegated stake, which is why the API3 does not go to it.
     address constant VAULT = 0x8e03609ed680B237C7b6f8020472CA0687308b24;
+    /// Receives the API3 the vote moves, the mint and the primary Agent's balance. A new Safe that never votes on
+    /// Snapshot, so the treasury's weight stays apart from the Vault's delegated power.
+    /// NOTE: Not created yet. A placeholder until it is, so that the fork tests run on the source. `CreateVote.s.sol`
+    /// and the file and posted-vote test modes refuse an address without code, and this one has none.
+    address constant TREASURY_SAFE = 0x00000000000000000000000000000000DeaDBeef;
     address constant AGENT_SAFE = 0xBBE0dE9757F93e3306aDBfeBE906AB285EDD13DA;
     address constant DEAD = 0x000000000000000000000000000000000000dEaD;
     address constant ANY_ENTITY = address(type(uint160).max);
@@ -47,9 +54,9 @@ abstract contract ShutdownScript {
 
     /// What the script moves, read from the chain when the vote is built.
     struct Amounts {
-        /// Minted into the Vault Safe, 200,000,000 API3 minus the total supply at that block.
+        /// Minted into the Treasury Safe, 200,000,000 API3 minus the total supply at that block.
         uint256 mint;
-        /// The primary Agent's API3, moved to the Vault Safe.
+        /// The primary Agent's API3, moved to the Treasury Safe.
         uint256 agentApi3;
         /// The secondary Agent's balances, moved to the agent multisig.
         uint256 secondaryUsdc;
@@ -139,10 +146,13 @@ abstract contract ShutdownScript {
             _viaAgent(address(AGENT_SECONDARY), abi.encodeCall(IAgent.execute, (AGENT_SAFE, amounts.secondaryEth, "")))
         );
 
-        // 3. Primary agent, transfer to the vault of its API3. The primary voting app holds
+        // 3. Primary agent, transfer to the Treasury Safe of its API3. The primary voting app holds
         // TRANSFER_ROLE on the primary Agent, so this is a plain Agent transfer.
+        // NOTE: The appendix names the Vault Safe. Decided 2026-10-22: the Vault votes on Snapshot with
+        // the pool stake delegated to it, so the API3 goes to a new Safe that never votes.
         script = bytes.concat(
-            script, _direct(address(AGENT), abi.encodeCall(IAgent.transfer, (address(API3), VAULT, amounts.agentApi3)))
+            script,
+            _direct(address(AGENT), abi.encodeCall(IAgent.transfer, (address(API3), TREASURY_SAFE, amounts.agentApi3)))
         );
 
         // 4 to 8. Api3Token calls, made by the primary Agent as the token owner.
@@ -154,9 +164,11 @@ abstract contract ShutdownScript {
         script = bytes.concat(
             script, _viaAgent(address(API3), abi.encodeCall(IApi3Token.updateMinterStatus, (address(AGENT), true)))
         );
-        // 6. mint(vault, amount), the amount fixed when the script is built as 200,000,000 minus the
-        // total supply at that block.
-        script = bytes.concat(script, _viaAgent(address(API3), abi.encodeCall(IApi3Token.mint, (VAULT, amounts.mint))));
+        // 6. mint(Treasury Safe, amount), the amount fixed when the script is built as 200,000,000 minus
+        // the total supply at that block. NOTE: the appendix names the Vault Safe, see row 3.
+        script = bytes.concat(
+            script, _viaAgent(address(API3), abi.encodeCall(IApi3Token.mint, (TREASURY_SAFE, amounts.mint)))
+        );
         // 7. updateMinterStatus(primary agent, false).
         script = bytes.concat(
             script, _viaAgent(address(API3), abi.encodeCall(IApi3Token.updateMinterStatus, (address(AGENT), false)))

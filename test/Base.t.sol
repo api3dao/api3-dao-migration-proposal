@@ -27,7 +27,7 @@ abstract contract Base_Test is Test, ShutdownScript {
     bool voteOnChain;
     uint256 voteId;
     Amounts amounts;
-    uint256 vaultApi3Before;
+    uint256 treasuryApi3Before;
     uint256 agentSafeUsdcBefore;
     uint256 agentSafePnkBefore;
     uint256 agentSafeWpoktBefore;
@@ -41,7 +41,7 @@ abstract contract Base_Test is Test, ShutdownScript {
         _loadVoteScript();
         _assertPermissionsAppendixAReliesOn();
 
-        vaultApi3Before = API3.balanceOf(VAULT);
+        treasuryApi3Before = API3.balanceOf(TREASURY_SAFE);
         agentSafeUsdcBefore = USDC.balanceOf(AGENT_SAFE);
         agentSafePnkBefore = PNK.balanceOf(AGENT_SAFE);
         agentSafeWpoktBefore = WPOKT.balanceOf(AGENT_SAFE);
@@ -85,6 +85,8 @@ abstract contract Base_Test is Test, ShutdownScript {
         metadata = vm.readFile(string.concat(generatedDir, "/metadata.txt"));
         bytes32 hash = vm.parseBytes32(vm.readFile(string.concat(generatedDir, "/script-hash.txt")));
         assertEq(hash, keccak256(script), "script-hash.txt is the keccak256 of script.hex");
+        // The source carries a placeholder until the Treasury Safe exists, bytes to be posted may not
+        assertGt(TREASURY_SAFE.code.length, 0, "the Treasury Safe the bytes move the API3 to is deployed");
         console.log("script read from", generatedDir, "generated at block", generatedBlock);
 
         if (voteOnChain) {
@@ -202,8 +204,8 @@ abstract contract Base_Test is Test, ShutdownScript {
         _nextBlock();
     }
 
-    /// The fallback path: the pool mints one more epoch first, the supply overshoots by that reward and the Vault
-    /// Safe burns the surplus afterwards.
+    /// The fallback path: the pool mints one more epoch first, the supply overshoots by that reward and the
+    /// Treasury Safe, where the mint landed, burns the surplus afterwards.
     function executeAfterOneMoreEpoch() internal returns (uint256 overshoot, uint256 reward) {
         _nextEpoch();
         uint256 supply = API3.totalSupply();
@@ -211,7 +213,7 @@ abstract contract Base_Test is Test, ShutdownScript {
         reward = API3.totalSupply() - supply;
         VOTING.executeVote(voteId);
         overshoot = API3.totalSupply() - TARGET_SUPPLY;
-        vm.startPrank(VAULT);
+        vm.startPrank(TREASURY_SAFE);
         API3.updateBurnerStatus(true);
         API3.burn(overshoot);
         vm.stopPrank();

@@ -23,7 +23,7 @@ abstract contract ShutdownProposalBase is Test, ShutdownScript {
     uint256 secondaryPnk;
     uint256 secondaryWpokt;
     uint256 secondaryEth;
-    uint256 vaultApi3Before;
+    uint256 treasuryApi3Before;
     uint256 agentSafeUsdcBefore;
     uint256 agentSafePnkBefore;
     uint256 agentSafeWpoktBefore;
@@ -78,7 +78,7 @@ abstract contract ShutdownProposalBase is Test, ShutdownScript {
         secondaryPnk = amounts.secondaryPnk;
         secondaryWpokt = amounts.secondaryWpokt;
         secondaryEth = amounts.secondaryEth;
-        vaultApi3Before = API3.balanceOf(VAULT);
+        treasuryApi3Before = API3.balanceOf(TREASURY_SAFE);
         agentSafeUsdcBefore = USDC.balanceOf(AGENT_SAFE);
         agentSafePnkBefore = PNK.balanceOf(AGENT_SAFE);
         agentSafeWpoktBefore = WPOKT.balanceOf(AGENT_SAFE);
@@ -164,9 +164,9 @@ contract ShutdownProposalTest is ShutdownProposalBase {
     function test_01_supply_is_exactly_200M_treasury_moved_and_minting_is_gone() public view {
         _assertOutcome();
         assertEq(
-            API3.balanceOf(VAULT),
-            vaultApi3Before + mintAmount + agentApi3,
-            "vault received the mint and the agent treasury"
+            API3.balanceOf(TREASURY_SAFE),
+            treasuryApi3Before + mintAmount + agentApi3,
+            "the Treasury Safe received the mint and the agent treasury"
         );
         console.log("minted by the vote (API3)    ", mintAmount / 1e18);
         console.log("agent treasury moved (API3)  ", agentApi3 / 1e18);
@@ -293,7 +293,7 @@ contract ShutdownProposalTest is ShutdownProposalBase {
     function test_06_new_user_deposits_stakes_and_exits() public {
         address user = makeAddr("newStaker");
         uint256 amount = 1_000_000e18;
-        vm.prank(VAULT);
+        vm.prank(TREASURY_SAFE);
         API3.transfer(user, amount);
 
         vm.startPrank(user);
@@ -441,7 +441,7 @@ contract ShutdownProposalTest is ShutdownProposalBase {
 }
 
 /// The fallback path: the pool mints one more epoch before the decided vote is executed, so the
-/// supply overshoots by that reward and the vault burns the surplus afterwards.
+/// supply overshoots by that reward and the Treasury Safe burns the surplus afterwards.
 contract ShutdownProposalLateExecutionTest is ShutdownProposalBase {
     uint256 overshoot;
 
@@ -451,7 +451,7 @@ contract ShutdownProposalLateExecutionTest is ShutdownProposalBase {
         VOTING.executeVote(voteId);
         overshoot = API3.totalSupply() - TARGET_SUPPLY;
         assertGt(overshoot, 0, "one more epoch was minted while the vote was open");
-        vm.startPrank(VAULT);
+        vm.startPrank(TREASURY_SAFE);
         API3.updateBurnerStatus(true);
         API3.burn(overshoot);
         vm.stopPrank();
@@ -459,7 +459,11 @@ contract ShutdownProposalLateExecutionTest is ShutdownProposalBase {
 
     function test_01_overshoot_is_burned_and_supply_is_exactly_200M() public view {
         _assertOutcome();
-        assertEq(API3.balanceOf(VAULT), vaultApi3Before + mintAmount + agentApi3 - overshoot, "vault paid the burn");
+        assertEq(
+            API3.balanceOf(TREASURY_SAFE),
+            treasuryApi3Before + mintAmount + agentApi3 - overshoot,
+            "the Treasury Safe paid the burn"
+        );
         console.log("overshoot burned (API3)", overshoot / 1e18);
     }
 }
