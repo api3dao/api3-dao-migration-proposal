@@ -4,3 +4,6 @@ Existing stakers keep every right they have today except voting: unstaking and w
 
 The amounts are the balances at the block the bytes were built, right before posting. Every call is listed in Appendix A of the proposal, and the fork tests that replay these exact bytes are at
 https://github.com/api3dao/api3-dao-migration-proposal
+
+The tool the signers run to recompute a Snapshot result from the chain is at
+https://github.com/api3dao/snapshot-voting-verifier

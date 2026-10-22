@@ -13,8 +13,8 @@ import "../src/ShutdownScript.sol";
 /// how the dashboard preview gets its proposal. Posting the real vote is a Vault Safe transaction, not this script.
 contract CreateVote is Script, ShutdownScript {
     function run() external {
-        // The bytes name the Treasury Safe as the destination of the API3, and the source carries a placeholder until
-        // that Safe exists. Nothing gets written, let alone posted, for an address without code.
+        // The bytes name the Treasury Safe as the destination of the API3. Nothing gets written, let alone posted, for
+        // an address without code.
         require(TREASURY_SAFE.code.length > 0, "CreateVote: the Treasury Safe is not deployed");
         Amounts memory amounts = readAmounts();
         bytes memory script_ = buildScript(amounts);
