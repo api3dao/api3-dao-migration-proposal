@@ -61,6 +61,16 @@ The first command writes `proposal/generated/`: `script.hex`, `script-hash.txt` 
 
 To rebuild the published bytes rather than fresh ones, pin the block from `amounts.json`: `forge script script/CreateVote.s.sol --rpc-url mainnet --fork-block-number <block>` writes the same files again, against an archive node once the block is old. Every amount has to be positive when the bytes are built, Aragon's Vault refuses a zero transfer and one reverting call reverts the whole script, so a row with nothing left to move has to be dropped from the script instead.
 
+## The fallback burn
+
+If execution lands after the reward epoch that follows posting, the pool has minted once more and the supply overshoots 200,000,000 API3 by that reward, which sits in the Treasury Safe together with the mint. The Treasury Safe then burns the excess, `updateBurnerStatus(true)` followed by `burn(excess)` on the token, as the late path of `test/vote/execute.tree` rehearses. The amount is whatever the supply exceeds the target by at that moment, so it is read from the chain when the transaction is prepared:
+
+```bash
+node scripts/treasury-burn.mjs
+```
+
+It prints the supply, the Treasury Safe's balance and the excess, refuses while the supply is at or below the target (the vote landed on it, or has not executed yet), and prints the two calls as calldata and writes them as a Safe Transaction Builder batch to `proposal/generated/treasury-burn.json`. The signers import that file in the Transaction Builder app of the Treasury Safe `0xb7fa2Cb302C5dC127e61F27b92beC411cbf0AE4A`, or paste the calldata as custom transactions, and verify the Safe transaction like any other before signing. The script sends nothing. `--block <number>` reads at a past block, to reproduce a run.
+
 ## Verify it yourself
 
 Everything below is read-only and needs no account, only an RPC. The same suite runs in three modes, chosen by two environment variables, and every assertion runs in each of them.
