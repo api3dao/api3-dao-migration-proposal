@@ -19,6 +19,7 @@ DASHBOARD_PORT=${DASHBOARD_PORT:-57750}
 DASHBOARD_DIR=${DASHBOARD_DIR:-./api3-dao-dashboard}
 FORK_URL=${ETH_RPC_URL:?set ETH_RPC_URL to a mainnet RPC}
 VAULT=0x8e03609ed680B237C7b6f8020472CA0687308b24
+TREASURY_SAFE=0x00000000000000000000000000000000DeaDBeef
 ANVIL_URL=http://127.0.0.1:$ANVIL_PORT
 
 [ -d "$DASHBOARD_DIR/node_modules" ] || pnpm -C "$DASHBOARD_DIR" install --frozen-lockfile
@@ -32,6 +33,11 @@ echo "anvil forked mainnet at block $(cast block-number --rpc-url "$ANVIL_URL"),
 
 # Gas for the Vault Safe, which anvil impersonates
 cast rpc anvil_setBalance "$VAULT" 0x56BC75E2D63100000 --rpc-url "$ANVIL_URL" >/dev/null
+# CreateVote refuses a Treasury Safe without code, which the placeholder in the source has none of until the Safe
+# is created. On the fork a stop opcode stands in for it, nothing in the vote calls the Safe.
+if [ "$(cast code "$TREASURY_SAFE" --rpc-url "$ANVIL_URL")" = 0x ]; then
+  cast rpc anvil_setCode "$TREASURY_SAFE" 0x00 --rpc-url "$ANVIL_URL" >/dev/null
+fi
 forge script script/CreateVote.s.sol --rpc-url "$ANVIL_URL" --broadcast --unlocked --sender "$VAULT" -vv
 VOTE_ID=$(cat proposal/generated/vote-id.txt)
 

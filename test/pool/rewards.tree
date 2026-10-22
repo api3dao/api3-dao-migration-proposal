@@ -1,0 +1,5 @@
+Pool_Rewards_Test
+└── when reward epochs pass after the shutdown
+    ├── it should mint nothing on mintReward.
+    ├── it should leave the total stake unchanged.
+    └── it should keep advancing the epoch cursor.

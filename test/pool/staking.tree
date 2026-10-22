@@ -1,0 +1,19 @@
+Pool_Staking_Test
+├── when an existing staker schedules a full unstake and unstakes after seven days
+│   ├── it should return the staked amount with only rounding dust left.
+│   ├── it should refuse to withdraw one wei more than the unlocked part.
+│   └── it should withdraw everything that is not locked or vesting.
+├── when reward epochs keep passing after an existing staker unstaked
+│   ├── it should hold less locked after 26 epochs than at the start.
+│   ├── it should hold nothing locked after 52 epochs.
+│   └── it should let the staker withdraw everything but the timelocked vesting.
+├── when a new address deposits and stakes after the shutdown
+│   ├── it should record the stake.
+│   ├── it should let it unstake after seven days with nothing locked.
+│   ├── it should return the full deposit on withdrawal.
+│   └── it should leave the total supply untouched.
+└── when an existing staker exits half then comes back and exits fully a year later
+    ├── it should advance the reward cursor without minting on the first call after the shutdown.
+    ├── it should return the scheduled half and keep the rest staked.
+    ├── it should withdraw the unlocked part and take the same amount back as stake.
+    └── it should hold nothing locked a year after the last mint and withdraw everything but a TimelockManager deposit.

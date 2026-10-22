@@ -1,0 +1,8 @@
+Dao_Closed_Test
+├── when anyone tries to create a vote on either app
+│   └── it should revert with APP_AUTH_FAILED.
+├── it should leave vote creation on both apps without a permission manager.
+├── it should hold support and quorum at the maximum on both apps with no manager left.
+├── it should take the ACL and Kernel root permissions from the primary voting app and leave them without a manager.
+└── when the primary voting app itself tries to create a permission or swap an app's code
+    └── it should revert with APP_AUTH_FAILED and KERNEL_AUTH_FAILED.
