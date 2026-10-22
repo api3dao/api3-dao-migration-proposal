@@ -26,9 +26,11 @@ contract Vote_Execute_Test is Base_Test {
 
     function test_WhenOneMoreRewardEpochIsMintedBeforeTheVoteExecutes() external {
         // it should overshoot the target by that epoch's reward.
-        // it should land on exactly 200,000,000 API3 once the Treasury Safe burns the overshoot.
+        // it should land on exactly 200,000,000 API3 once the Agent Safe burns the overshoot.
+        // it should have the Treasury Safe cover only what the Agent Safe lacked.
         uint256 supplyBefore = API3.totalSupply();
-        (uint256 overshoot, uint256 reward) = executeAfterOneMoreEpoch();
+        uint256 agentSafeApi3Before = API3.balanceOf(AGENT_SAFE);
+        (uint256 overshoot, uint256 reward, uint256 shortfall) = executeAfterOneMoreEpoch();
         assertGt(reward, 0, "one more epoch was minted while the vote was open");
         // Plus whatever the supply grew by since the amounts were read, nothing when the script was built here
         assertEq(
@@ -36,11 +38,16 @@ contract Vote_Execute_Test is Base_Test {
         );
         _assertOutcome();
         assertEq(
-            API3.balanceOf(TREASURY_SAFE),
-            treasuryApi3Before + amounts.mint + amounts.agentApi3 - overshoot,
-            "the Treasury Safe paid the burn"
+            API3.balanceOf(AGENT_SAFE), agentSafeApi3Before + shortfall - overshoot, "the Agent Safe burned the excess"
         );
-        console.log("overshoot burned (API3)", overshoot / 1e18);
+        assertEq(
+            API3.balanceOf(TREASURY_SAFE),
+            treasuryApi3Before + amounts.mint + amounts.agentApi3 - shortfall,
+            "the Treasury Safe covered the shortfall and nothing more"
+        );
+        console.log("overshoot burned (API3)        ", overshoot / 1e18);
+        console.log("Agent Safe API3 before (API3)  ", agentSafeApi3Before / 1e18);
+        console.log("Treasury Safe top-up (API3)    ", shortfall / 1e18);
     }
 
     function test_WhenAHolderBurnsAPI3BeforeTheVoteExecutes() external {

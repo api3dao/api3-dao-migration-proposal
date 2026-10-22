@@ -32,7 +32,7 @@ One primary vote, passed by real voting power (`test/data/voters.json`). [src/Sh
 
 The Treasury Safe is a new Safe for the API3 the vote moves. It only holds, with the same signers as the Vault and Agent Safes, which execute what passes, and it never votes on Snapshot. The Vault Safe, which many pool delegations name, votes there with that delegated stake and its own holdings, so the treasury's weight stays out of its hands. It is `0xb7fa2Cb302C5dC127e61F27b92beC411cbf0AE4A`, 3 of 5 with the same signers, and its Snapshot voting power is delegated to the dead address. `CreateVote.s.sol` and the file and posted-vote test modes check that the address has code.
 
-The mint amount is fixed when the script is built. A primary vote can execute the moment yea exceeds 50% of all voting power, and the intended path executes it there, before the next weekly reward mint, so the supply lands on exactly 200,000,000 with nothing to burn. The fallback path is rehearsed too: one more epoch is minted before execution, about 0.95M API3 at the current 75% APR, and the Treasury Safe burns the overshoot with `updateBurnerStatus(true)` and `burn(excess)`.
+The mint amount is fixed when the script is built. A primary vote can execute the moment yea exceeds 50% of all voting power, and the intended path executes it there, before the next weekly reward mint, so the supply lands on exactly 200,000,000 with nothing to burn. The fallback path is rehearsed too: one more epoch is minted before execution, about 0.95M API3 at the current 75% APR, and the Agent Safe burns the overshoot from its own API3 with `burn(excess)`, topped up by the Treasury Safe when it holds less than that.
 
 ## What the tests assert
 
@@ -63,13 +63,13 @@ To rebuild the published bytes rather than fresh ones, pin the block from `amoun
 
 ## The fallback burn
 
-If execution lands after the reward epoch that follows posting, the pool has minted once more and the supply overshoots 200,000,000 API3 by that reward, which sits in the Treasury Safe together with the mint. The Treasury Safe then burns the excess, `updateBurnerStatus(true)` followed by `burn(excess)` on the token, as the late path of `test/vote/execute.tree` rehearses. The amount is whatever the supply exceeds the target by at that moment, so it is read from the chain when the transaction is prepared:
+If execution lands after the reward epoch that follows posting, the pool has minted once more and the supply overshoots 200,000,000 API3 by that reward. The Agent Safe `0xBBE0dE9757F93e3306aDBfeBE906AB285EDD13DA` then burns that much of its own API3, one `burn(excess)` call on the token, as the late path of `test/vote/execute.tree` rehearses. The token lets a holder burn once it opted in with `updateBurnerStatus(true)`, a one-time call the Agent Safe makes any time before the vote. The amount is whatever the supply exceeds the target by at that moment, so it is read from the chain when the transaction is prepared:
 
 ```bash
-node scripts/treasury-burn.mjs
+node scripts/burn-overshoot.mjs
 ```
 
-It prints the supply, the Treasury Safe's balance and the excess, refuses while the supply is at or below the target (the vote landed on it, or has not executed yet), and prints the two calls as calldata and writes them as a Safe Transaction Builder batch to `proposal/generated/treasury-burn.json`. The signers import that file in the Transaction Builder app of the Treasury Safe `0xb7fa2Cb302C5dC127e61F27b92beC411cbf0AE4A`, or paste the calldata as custom transactions, and verify the Safe transaction like any other before signing. The script sends nothing. `--block <number>` reads at a past block, to reproduce a run.
+It prints the supply, the two Safes' balances and the excess, refuses while the supply is at or below the target (the vote landed on it, or has not executed yet), and prints the one call to make as calldata: from the Agent Safe to the token, `burn(excess)`, value 0. It prints the preparation call the same way while the Agent Safe is not a burner yet, and a `transfer` from the Treasury Safe, where the mint landed, when the Agent Safe holds less than the excess. The signers paste the data as a custom transaction in the Safe app and verify it like any other before signing. The script sends nothing. `--block <number>` reads at a past block, to reproduce a run.
 
 ## Verify it yourself
 
