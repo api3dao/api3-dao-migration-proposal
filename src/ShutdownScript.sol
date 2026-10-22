@@ -21,11 +21,11 @@ abstract contract ShutdownScript {
     /// Posts the vote. It stakes nothing but holds the pool shares delegated to it, which clear the proposal
     /// threshold, and it votes on Snapshot with that delegated stake, which is why the API3 does not go to it.
     address constant VAULT = 0x8e03609ed680B237C7b6f8020472CA0687308b24;
-    /// Receives the API3 the vote moves, the mint and the primary Agent's balance. A new Safe that never votes on
-    /// Snapshot, so the treasury's weight stays apart from the Vault's delegated power.
-    /// NOTE: Not created yet. A placeholder until it is, so that the fork tests run on the source. `CreateVote.s.sol`
-    /// and the file and posted-vote test modes refuse an address without code, and this one has none.
-    address constant TREASURY_SAFE = 0x00000000000000000000000000000000DeaDBeef;
+    /// Receives the API3 the vote moves, the mint and the primary Agent's balance. A Safe with the same five signers
+    /// as the Vault and Agent Safes that only holds: its Snapshot voting power is delegated to the dead address, so the
+    /// treasury's weight stays apart from the Vault's delegated power. `CreateVote.s.sol` and the file and posted-vote
+    /// test modes check that the address has code.
+    address constant TREASURY_SAFE = 0xb7fa2Cb302C5dC127e61F27b92beC411cbf0AE4A;
     address constant AGENT_SAFE = 0xBBE0dE9757F93e3306aDBfeBE906AB285EDD13DA;
     address constant DEAD = 0x000000000000000000000000000000000000dEaD;
     address constant ANY_ENTITY = address(type(uint160).max);

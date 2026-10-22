@@ -85,7 +85,7 @@ abstract contract Base_Test is Test, ShutdownScript {
         metadata = vm.readFile(string.concat(generatedDir, "/metadata.txt"));
         bytes32 hash = vm.parseBytes32(vm.readFile(string.concat(generatedDir, "/script-hash.txt")));
         assertEq(hash, keccak256(script), "script-hash.txt is the keccak256 of script.hex");
-        // The source carries a placeholder until the Treasury Safe exists, bytes to be posted may not
+        // Bytes to be posted name a deployed Treasury Safe
         assertGt(TREASURY_SAFE.code.length, 0, "the Treasury Safe the bytes move the API3 to is deployed");
         console.log("script read from", generatedDir, "generated at block", generatedBlock);
 
