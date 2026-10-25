@@ -89,8 +89,8 @@ abstract contract ShutdownScript {
     }
 
     /// One CallsScript, following the rows of Appendix A in order. `_direct` entries are made by the primary voting
-    /// app itself, `_viaAgent` entries by the primary Agent through `execute`. A NOTE marks every place the script
-    /// differs from the appendix, and why.
+    /// app itself, `_viaAgent` entries by the primary Agent through `execute`. The comments give the reason behind
+    /// a row where the appendix states one.
     function buildScript(Amounts memory amounts) internal pure returns (bytes memory script) {
         script = abi.encodePacked(uint32(1));
 
@@ -102,11 +102,11 @@ abstract contract ShutdownScript {
                 abi.encodeCall(IACL.grantPermission, (address(AGENT), address(AGENT_SECONDARY), TRANSFER_ROLE))
             )
         );
-        // NOTE: Not in the appendix. The ETH of row 2 cannot go through the secondary Agent's
-        // `transfer`: Aragon's Vault sends ETH with `send`, and the 2300 gas stipend is not enough
-        // for a Safe to receive it (`VAULT_SEND_REVERTED` on the fork, an EOA receives fine). The
-        // ETH goes through `execute` instead, which needs EXECUTE_ROLE. The primary voting app
-        // manages that role on the secondary Agent as well, so no other vote is needed.
+        // EXECUTE_ROLE as well: the ETH of row 2 cannot go through the secondary Agent's `transfer`.
+        // Aragon's Vault sends ETH with `send`, and the 2300 gas stipend is not enough for a Safe to
+        // receive it (`VAULT_SEND_REVERTED` on the fork, an EOA receives fine). The ETH goes through
+        // `execute` instead, which needs EXECUTE_ROLE. The primary voting app manages that role on
+        // the secondary Agent as well, so no other vote is needed.
         script = bytes.concat(
             script,
             _direct(
@@ -115,10 +115,9 @@ abstract contract ShutdownScript {
             )
         );
 
-        // 2. Secondary agent, transfer to the agent multisig of its USDC, PNK, wPOKT and ETH.
-        // NOTE: The appendix quotes balances read on 2 Sep 2026 and refreshed at posting. The amounts
-        // are read from the chain when the script is built, which is what the refreshed figures
-        // will be.
+        // 2. Secondary agent, transfer to the agent multisig of its USDC, PNK, wPOKT and ETH. The
+        // amounts are read from the chain when the script is built, right before posting. The
+        // appendix quotes the balances of an earlier day and points here for the posted ones.
         script = bytes.concat(
             script,
             _viaAgent(
@@ -140,16 +139,16 @@ abstract contract ShutdownScript {
                 abi.encodeCall(IAgent.transfer, (address(WPOKT), AGENT_SAFE, amounts.secondaryWpokt))
             )
         );
-        // NOTE: `execute` instead of `transfer` for the ETH, see row 1.
+        // `execute` instead of `transfer` for the ETH, see row 1.
         script = bytes.concat(
             script,
             _viaAgent(address(AGENT_SECONDARY), abi.encodeCall(IAgent.execute, (AGENT_SAFE, amounts.secondaryEth, "")))
         );
 
         // 3. Primary agent, transfer to the Treasury Safe of its API3. The primary voting app holds
-        // TRANSFER_ROLE on the primary Agent, so this is a plain Agent transfer.
-        // NOTE: The appendix names the Vault Safe. Decided 2026-10-22: the Vault votes on Snapshot with
-        // the pool stake delegated to it, so the API3 goes to a new Safe that never votes.
+        // TRANSFER_ROLE on the primary Agent, so this is a plain Agent transfer, not one through
+        // `execute`. The Treasury Safe rather than the Vault: the Vault votes on Snapshot with the
+        // pool stake delegated to it, so the API3 goes to a Safe that never votes.
         script = bytes.concat(
             script,
             _direct(address(AGENT), abi.encodeCall(IAgent.transfer, (address(API3), TREASURY_SAFE, amounts.agentApi3)))
@@ -165,7 +164,8 @@ abstract contract ShutdownScript {
             script, _viaAgent(address(API3), abi.encodeCall(IApi3Token.updateMinterStatus, (address(AGENT), true)))
         );
         // 6. mint(Treasury Safe, amount), the amount fixed when the script is built as 200,000,000 minus
-        // the total supply at that block. NOTE: the appendix names the Vault Safe, see row 3.
+        // the total supply at that block. The Treasury Safe for the reason in row 3. If the pool mints
+        // once more before execution, the Treasury Safe burns the excess, see the README.
         script = bytes.concat(
             script, _viaAgent(address(API3), abi.encodeCall(IApi3Token.mint, (TREASURY_SAFE, amounts.mint)))
         );
@@ -246,14 +246,13 @@ abstract contract ShutdownScript {
         );
 
         // 12. ACL, revoke the primary voting app's CREATE_PERMISSIONS_ROLE on the ACL and
-        // APP_MANAGER_ROLE on the Kernel, and remove both managers.
-        // NOTE: Not in the appendix. These are the DAO's root permissions, both held and managed
-        // by the primary voting app. Removing a permission's manager, as rows 10 and 11 do, is
-        // exactly what lets a holder of CREATE_PERMISSIONS_ROLE create that permission again, and
-        // APP_MANAGER_ROLE swaps the code behind any app. Both were reachable only through a
-        // primary vote, so rows 9 and 10 already put them out of reach. This row makes that hold
-        // even for a vote created through a route not seen, or one still open at execution.
-        // Revoke before removing the manager, and the ACL's own role last.
+        // APP_MANAGER_ROLE on the Kernel, and remove both managers. These are the DAO's root
+        // permissions, both held and managed by the primary voting app. Removing a permission's
+        // manager, as rows 10 and 11 do, is exactly what lets a holder of CREATE_PERMISSIONS_ROLE
+        // create that permission again, and APP_MANAGER_ROLE swaps the code behind any app. Both
+        // were reachable only through a primary vote, so rows 9 and 10 already put them out of
+        // reach. This row makes that hold even for a vote created through a route not seen, or one
+        // still open at execution. Revoke before removing the manager, and the ACL's own role last.
         script = bytes.concat(
             script,
             _direct(
