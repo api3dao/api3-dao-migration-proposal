@@ -204,24 +204,18 @@ abstract contract Base_Test is Test, ShutdownScript {
         _nextBlock();
     }
 
-    /// The fallback path: the pool mints one more epoch first, the supply overshoots by that reward and the Agent
-    /// Safe burns the surplus from its own API3 afterwards, topped up by the Treasury Safe, where the mint landed,
-    /// when it holds less than that. The burner opt-in is a one-time call the Agent Safe makes before the vote.
-    function executeAfterOneMoreEpoch() internal returns (uint256 overshoot, uint256 reward, uint256 shortfall) {
+    /// The fallback path: the pool mints one more epoch first, the supply overshoots by that reward and the
+    /// Treasury Safe, where the mint landed, burns the surplus afterwards. The burner opt-in is a one-time call the
+    /// Treasury Safe makes before the vote opens, here it is made when missing.
+    function executeAfterOneMoreEpoch() internal returns (uint256 overshoot, uint256 reward) {
         _nextEpoch();
         uint256 supply = API3.totalSupply();
         POOL.mintReward();
         reward = API3.totalSupply() - supply;
         VOTING.executeVote(voteId);
         overshoot = API3.totalSupply() - TARGET_SUPPLY;
-        uint256 held = API3.balanceOf(AGENT_SAFE);
-        shortfall = held < overshoot ? overshoot - held : 0;
-        if (shortfall > 0) {
-            vm.prank(TREASURY_SAFE);
-            API3.transfer(AGENT_SAFE, shortfall);
-        }
-        vm.startPrank(AGENT_SAFE);
-        if (!API3.getBurnerStatus(AGENT_SAFE)) API3.updateBurnerStatus(true);
+        vm.startPrank(TREASURY_SAFE);
+        if (!API3.getBurnerStatus(TREASURY_SAFE)) API3.updateBurnerStatus(true);
         API3.burn(overshoot);
         vm.stopPrank();
         _nextBlock();
