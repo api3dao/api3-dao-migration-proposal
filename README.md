@@ -15,7 +15,7 @@ The RPC is a rate limited mainnet archive endpoint in `foundry.toml`, shared by 
 ## Running
 
 ```bash
-# Check that a posted vote, primary-<id> in the DAO dashboard, is the proposal this code builds
+# Check that a posted vote (e.g. "primary-17" in the DAO dashboard) is the proposal this code builds
 forge script script/VerifyVote.s.sol --sig "run(uint256)" <id>
 
 # Run the fork tests
