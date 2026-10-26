@@ -15,18 +15,23 @@ The RPC is a rate limited mainnet archive endpoint in `foundry.toml`, shared by 
 ## Running
 
 ```bash
+# Check a posted vote against the source, <vote id> is the number in the proposal's dashboard URL
 forge script script/VerifyVote.s.sol --sig "run(uint256)" <vote id>
+
+# Run the fork tests
 ./test.sh
+
+# Generate the proposal calldata for posting, into proposal/generated/
 forge script script/CreateVote.s.sol
+
+# Print any CallsScript as a table
 node scripts/decode-script.mjs <script.hex or 0x bytes>
+
+# Rebuild the table below from the source at a block
 node scripts/update-readme.mjs <block>
 ```
 
-- `VerifyVote` checks a posted vote against the source, see [Verifying a posted vote](#verifying-a-posted-vote).
-- `test.sh` checks that every `.tree` matches its test file and runs the fork suite on the script the source builds at the latest block. Arguments go to `forge test`. [CI](.github/workflows/ci.yml) runs it on every pull request and push to `main`.
-- `CreateVote` builds the script and the metadata for posting, see [Proposal creation](#proposal-creation).
-- The decoder prints any CallsScript as the table below, and anything it does not recognise raw.
-- `update-readme.mjs` rebuilds the table below from the source at a block, CI checks that the two still agree.
+`test.sh` checks that every `.tree` matches its test file and runs the fork suite on the script the source builds at the latest block. Arguments go to `forge test`. [CI](.github/workflows/ci.yml) runs it and the table check on every pull request and push to `main`.
 
 ## What the vote does
 
@@ -81,14 +86,8 @@ The tests follow the branching tree technique: each `.tree` file spells out what
 | [test/pool/rewards.tree](test/pool/rewards.tree)   | `mintReward()` mints nothing after the shutdown, the total stake holds and the epoch cursor keeps advancing                                           |
 | [test/pool/staking.tree](test/pool/staking.tree)   | stakers keep every right but voting: a full exit, locked rewards unlocking over 52 epochs, a new staker's round trip, a partial exit and re-entry over a year |
 
-## Proposal creation
+## Creating and verifying the proposal
 
-The vote is created programmatically, not through the DAO dashboard. [script/CreateVote.s.sol](script/CreateVote.s.sol) builds the script from the chain state at the current block and the metadata from [proposal/title.txt](proposal/title.txt) and [proposal/description.md](proposal/description.md), in the DAO dashboard's metadata scheme version 3 (`3`, title, description without the file's trailing newline, separated by `0x1f`), and writes `script.hex`, `metadata.txt`, `script-hash.txt` (the keccak256 the dashboard has to know to show the proposal) and `amounts.json` to the gitignored `proposal/generated/`. Nothing is sent, the `newVote` call is only simulated, which checks that the Vault Safe clears the proposal threshold. The Vault Safe then posts `newVote(script.hex, metadata.txt, false, false)`. Every amount has to be positive when the bytes are built, Aragon's Vault refuses a zero transfer and one reverting call reverts the whole script, so a row with nothing left to move has to be dropped from the script instead.
+[script/CreateVote.s.sol](script/CreateVote.s.sol) generates the proposal calldata from the chain state at the current block, ready to be submitted by the Vault Safe to the Aragon voting contract. The script, the metadata built from [proposal/title.txt](proposal/title.txt) and [proposal/description.md](proposal/description.md), and the script's hash land in the gitignored `proposal/generated/`. Nothing is sent.
 
-## Verifying a posted vote
-
-```bash
-forge script script/VerifyVote.s.sol --sig "run(uint256)" <vote id>
-```
-
-Rebuilds the script from the source at the vote's snapshot block and the metadata from the proposal files, reads the vote from the primary voting app and its `StartVote` log, and checks that the posted script and metadata are exactly those and that the Vault Safe created the vote. Read-only, nothing is sent. The vote id is the number in the dashboard's URL of the proposal, `#/governance/primary-<id>`. To read the posted bytes by hand, `cast call 0xDb6C812E439ce5c740570578681ea7aaDba5170b "getVote(uint256)(bool,bool,uint64,uint64,uint64,uint64,uint256,uint256,uint256,bytes)" <id>` prints them last, and the decoder turns them into the table above.
+[script/VerifyVote.s.sol](script/VerifyVote.s.sol) checks a posted vote: it rebuilds the proposal from the source at the vote's snapshot block and compares it with the vote on the chain, the script, the metadata and the Vault Safe as the creator. Read-only.
