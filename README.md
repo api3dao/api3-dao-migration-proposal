@@ -11,7 +11,7 @@ Needs [Foundry](https://getfoundry.sh), [bulloak](https://github.com/alexfertel/
 ./test.sh
 ```
 
-`test.sh` checks that every `.tree` still matches its test file and runs the fork suite on the script the source builds at the latest block. Arguments go to `forge test`. [CI](.github/workflows/ci.yml) runs the same on every push, plus the suite on the committed bytes and the README table check, see below.
+`test.sh` checks that every `.tree` still matches its test file and runs the fork suite on the script the source builds at the latest block. Arguments go to `forge test`. [CI](.github/workflows/ci.yml) runs the same on every pull request and push to `main`, plus the suite on the committed bytes and the README table check, see below.
 
 ## What the vote does
 
