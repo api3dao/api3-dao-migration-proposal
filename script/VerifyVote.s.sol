@@ -12,10 +12,13 @@ import "../src/ShutdownScript.sol";
 /// the script the same source builds. Read-only.
 ///
 ///   forge script script/VerifyVote.s.sol --sig "run(uint256)" <vote id>
+///
+/// The vote id is the number in the proposal's DAO dashboard URL, `primary-<vote id>`.
 contract VerifyVote is Script, ShutdownScript {
     bytes32 constant START_VOTE_TOPIC = keccak256("StartVote(uint256,address,string)");
 
     function run(uint256 voteId) external {
+        require(voteId < VOTING.votesLength(), "VerifyVote: no vote with this id has been posted yet");
         (bool open, bool executed,, uint64 snapshotBlock,,,,,, bytes memory posted) = VOTING.getVote(voteId);
         console.log("vote", voteId, executed ? "executed" : open ? "open" : "closed", "snapshot block");
         console.log(snapshotBlock);

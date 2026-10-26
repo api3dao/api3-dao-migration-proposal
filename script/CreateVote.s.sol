@@ -42,6 +42,7 @@ contract CreateVote is Script, ShutdownScript {
         console.log("mint (API3)               ", amounts.mint / 1e18);
         console.log("agent treasury (API3)     ", amounts.agentApi3 / 1e18);
         console.log("secondary agent USDC      ", amounts.secondaryUsdc / 1e6);
+        console.log("written to proposal/generated/: script.hex, metadata.txt, script-hash.txt, amounts.json");
 
         // The Vault Safe posts without voting, so the posted bytes can be checked before any vote is cast.
         vm.startBroadcast(VAULT);
