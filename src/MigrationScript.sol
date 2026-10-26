@@ -3,13 +3,13 @@ pragma solidity 0.8.20;
 
 import "./Interfaces.sol";
 
-/// @notice The vote script of the primary proposal that winds down the legacy DAO, built the same way for the fork
+/// @notice The vote script of the primary proposal that moves governance from the legacy DAO to Snapshot, built the same way for the fork
 /// tests and for the vote that gets posted. The calls are the ones the proposal text lists, in its order, one Aragon
 /// CallsScript with calls made by the primary voting app directly (ACL, primary Agent) or through the primary Agent's
 /// `execute` (token, secondary Agent, voting apps).
 ///
 /// The amounts the script moves are fixed when it is built, see `readAmounts`. Nothing here sends a transaction.
-abstract contract ShutdownScript {
+abstract contract MigrationScript {
     IApi3Token constant API3 = IApi3Token(0x0b38210ea11411557c13457D4dA7dC6ea731B88a);
     IApi3Pool constant POOL = IApi3Pool(0x6dd655f10d4b9E242aE186D9050B68F725c76d76);
     IApi3Voting constant VOTING = IApi3Voting(0xDb6C812E439ce5c740570578681ea7aaDba5170b);
@@ -69,18 +69,18 @@ abstract contract ShutdownScript {
     /// whole script, so a call with nothing to move has to be dropped from the script rather than left in with a zero.
     function readAmounts() internal view returns (Amounts memory amounts) {
         uint256 supply = API3.totalSupply();
-        require(supply < TARGET_SUPPLY, "ShutdownScript: supply already at the target");
+        require(supply < TARGET_SUPPLY, "MigrationScript: supply already at the target");
         amounts.mint = TARGET_SUPPLY - supply;
         amounts.agentApi3 = API3.balanceOf(address(AGENT));
         amounts.secondaryUsdc = USDC.balanceOf(address(AGENT_SECONDARY));
         amounts.secondaryPnk = PNK.balanceOf(address(AGENT_SECONDARY));
         amounts.secondaryWpokt = WPOKT.balanceOf(address(AGENT_SECONDARY));
         amounts.secondaryEth = address(AGENT_SECONDARY).balance;
-        require(amounts.agentApi3 > 0, "ShutdownScript: no API3 to move");
-        require(amounts.secondaryUsdc > 0, "ShutdownScript: no USDC to move");
-        require(amounts.secondaryPnk > 0, "ShutdownScript: no PNK to move");
-        require(amounts.secondaryWpokt > 0, "ShutdownScript: no wPOKT to move");
-        require(amounts.secondaryEth > 0, "ShutdownScript: no ETH to move");
+        require(amounts.agentApi3 > 0, "MigrationScript: no API3 to move");
+        require(amounts.secondaryUsdc > 0, "MigrationScript: no USDC to move");
+        require(amounts.secondaryPnk > 0, "MigrationScript: no PNK to move");
+        require(amounts.secondaryWpokt > 0, "MigrationScript: no wPOKT to move");
+        require(amounts.secondaryEth > 0, "MigrationScript: no ETH to move");
     }
 
     /// The `metadata` argument of `newVote`, in the scheme the DAO dashboard decodes.
@@ -179,7 +179,7 @@ abstract contract ShutdownScript {
             script, _viaAgent(address(API3), abi.encodeCall(IApi3Token.updateMinterStatus, (address(AGENT), false)))
         );
         // Call 12: transferOwnership(dead). `renounceOwnership` reverts by design, so this is the only way to
-        // freeze the minter set.
+        // make the minter set final.
         script = bytes.concat(script, _viaAgent(address(API3), abi.encodeCall(IApi3Token.transferOwnership, (DEAD))));
 
         // Calls 13 and 14: the ACL revokes CREATE_VOTES_ROLE from any address on both voting apps.
@@ -199,8 +199,8 @@ abstract contract ShutdownScript {
             )
         );
 
-        // Calls 15 and 16: the ACL removes the manager of CREATE_VOTES_ROLE on both voting apps, so nobody
-        // can grant it again.
+        // Calls 15 and 16: the ACL removes the manager of CREATE_VOTES_ROLE on both voting apps, so it
+        // cannot be granted again.
         // Call 15, primary voting app
         script = bytes.concat(
             script,

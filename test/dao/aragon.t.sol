@@ -3,16 +3,16 @@ pragma solidity 0.8.20;
 
 import {Executed_Test} from "../Base.t.sol";
 
-/// The old DAO after the vote: nothing can be created, changed or reopened.
-contract Dao_Closed_Test is Executed_Test {
+/// The legacy voting apps after the migration: no new votes, settings and permissions final.
+contract Dao_Aragon_Test is Executed_Test {
     function test_WhenAnyoneTriesToCreateAVoteOnEitherApp() external {
         // it should revert with APP_AUTH_FAILED.
         vm.prank(_proposer());
         vm.expectRevert(bytes("APP_AUTH_FAILED"));
-        VOTING.newVote(hex"00000001", "after the wind-down", true, false);
+        VOTING.newVote(hex"00000001", "after the migration", true, false);
         vm.prank(_proposer());
         vm.expectRevert(bytes("APP_AUTH_FAILED"));
-        VOTING_SECONDARY.newVote(hex"00000001", "after the wind-down", true, false);
+        VOTING_SECONDARY.newVote(hex"00000001", "after the migration", true, false);
     }
 
     function test_ShouldLeaveVoteCreationOnBothAppsWithoutAPermissionManager() external view {

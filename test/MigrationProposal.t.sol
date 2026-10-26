@@ -2,10 +2,10 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/ShutdownScript.sol";
+import "../src/MigrationScript.sol";
 
-/// @notice Fork rehearsal of the primary proposal that winds down the legacy DAO. The vote script
-/// is the one `ShutdownScript` builds, the same bytes that get posted.
+/// @notice Fork rehearsal of the primary proposal that moves governance from the legacy DAO to Snapshot. The vote script
+/// is the one `MigrationScript` builds, the same bytes that get posted.
 ///
 /// The vote is passed by the addresses in test/data/voters.json, real holders of voting power.
 /// `_execute` is the only thing the two concrete contracts differ in: the intended path executes
@@ -13,7 +13,7 @@ import "../src/ShutdownScript.sol";
 /// executes after one more mint and burns the overshoot.
 ///
 /// Fork only. Nothing here touches mainnet.
-abstract contract ShutdownProposalBase is Test, ShutdownScript {
+abstract contract MigrationProposalBase is Test, MigrationScript {
     address[] voters;
     address[] stakers;
     uint256 voteId;
@@ -137,7 +137,7 @@ abstract contract ShutdownProposalBase is Test, ShutdownScript {
 
     function _assertOutcome() internal view {
         assertEq(API3.totalSupply(), TARGET_SUPPLY, "total supply is exactly 200M");
-        assertEq(API3.owner(), DEAD, "token owner is the dead address, minter set is frozen");
+        assertEq(API3.owner(), DEAD, "token owner is the dead address, minter set is final");
         assertFalse(API3.getMinterStatus(address(POOL)), "pool cannot mint");
         assertFalse(API3.getMinterStatus(address(AGENT)), "agent cannot mint");
         assertEq(API3.balanceOf(address(AGENT)), 0, "primary agent emptied");
@@ -154,7 +154,7 @@ abstract contract ShutdownProposalBase is Test, ShutdownScript {
 
 /// The intended path: the vote is decided and executed before the pool mints another epoch, so
 /// the mint fixed at posting lands the supply on exactly 200M with nothing to burn.
-contract ShutdownProposalTest is ShutdownProposalBase {
+contract MigrationProposalTest is MigrationProposalBase {
     function _execute() internal override {
         VOTING.executeVote(voteId);
     }
@@ -185,14 +185,14 @@ contract ShutdownProposalTest is ShutdownProposalBase {
         assertEq(POOL.epochIndexOfLastReward(), block.timestamp / EPOCH, "cursor keeps advancing");
     }
 
-    function test_03_old_dao_is_closed() public {
+    function test_03_legacy_dao_takes_no_new_votes() public {
         // No vote can be created on either app.
         vm.prank(_proposer());
         vm.expectRevert(bytes("APP_AUTH_FAILED"));
-        VOTING.newVote(hex"00000001", "after the wind-down", true, false);
+        VOTING.newVote(hex"00000001", "after the migration", true, false);
         vm.prank(_proposer());
         vm.expectRevert(bytes("APP_AUTH_FAILED"));
-        VOTING_SECONDARY.newVote(hex"00000001", "after the wind-down", true, false);
+        VOTING_SECONDARY.newVote(hex"00000001", "after the migration", true, false);
         assertEq(
             ACL.getPermissionManager(address(VOTING), CREATE_VOTES_ROLE),
             address(0),
@@ -318,7 +318,7 @@ contract ShutdownProposalTest is ShutdownProposalBase {
         assertEq(API3.totalSupply(), TARGET_SUPPLY, "supply untouched by staking");
     }
 
-    /// The full life of a staker after the shutdown: halfStake exit, re-entry, full exit a year later.
+    /// The full life of a staker after the migration: halfStake exit, re-entry, full exit a year later.
     function test_08_staker_partially_exits_reenters_and_fully_exits_a_year_later() public {
         address staker = _stakerWithoutPendingUnstake();
         // Deposits made through the old TimelockManager stay in the pool until that contract releases them, which
@@ -330,7 +330,7 @@ contract ShutdownProposalTest is ShutdownProposalBase {
         _passDays(7);
         _passDays(10);
 
-        // 2. Schedule a partial unstake. This is the first call into the pool since the shutdown, so it is also
+        // 2. Schedule a partial unstake. This is the first call into the pool since the migration, so it is also
         // the first reward mint attempt with the minter status gone.
         uint256 stakeBefore = POOL.userStake(staker);
         uint256 halfStake = stakeBefore / 2;
@@ -442,7 +442,7 @@ contract ShutdownProposalTest is ShutdownProposalBase {
 
 /// The fallback path: the pool mints one more epoch before the decided vote is executed, so the
 /// supply overshoots by that reward and the Treasury Safe burns the surplus afterwards.
-contract ShutdownProposalLateExecutionTest is ShutdownProposalBase {
+contract MigrationProposalLateExecutionTest is MigrationProposalBase {
     uint256 overshoot;
 
     function _execute() internal override {

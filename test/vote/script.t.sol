@@ -73,7 +73,7 @@ contract Vote_Script_Test is Base_Test {
         uint256 balance = USDC.balanceOf(address(AGENT_SECONDARY));
         vm.prank(address(AGENT_SECONDARY));
         USDC.transfer(address(0xBEEF), balance);
-        vm.expectRevert(bytes("ShutdownScript: no USDC to move"));
+        vm.expectRevert(bytes("MigrationScript: no USDC to move"));
         this.build();
     }
 

@@ -4,7 +4,7 @@
 //   node scripts/decode-script.mjs proposal/generated/script.hex
 //
 // The script is split into (target, calldata) entries, a call the primary Agent forwards through `execute` is unwrapped,
-// and the calldata is decoded against the signatures the wind-down vote can contain. Anything else is printed raw, so an
+// and the calldata is decoded against the signatures the migration vote can contain. Anything else is printed raw, so an
 // unexpected call stands out. The names next to the addresses are labels this file assigns for readability (NAMES
 // below), the addresses are what the script holds, and the output says so. A reading aid, the byte for byte
 // comparisons are the forge tests. Needs `cast` for the hashes. Read-only, no dependencies.

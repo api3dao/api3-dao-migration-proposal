@@ -2,12 +2,12 @@
 pragma solidity 0.8.20;
 
 import "forge-std/Script.sol";
-import "../src/ShutdownScript.sol";
+import "../src/MigrationScript.sol";
 
 /// @notice Builds the vote script and metadata from the chain state at the current block and writes them to
 /// `proposal/generated/`: the bytes, their keccak256 hash, the metadata string and the amounts they contain. The
 /// title and description come from `proposal/title.txt` and `proposal/description.md`. Nothing is sent.
-contract CreateVote is Script, ShutdownScript {
+contract CreateVote is Script, MigrationScript {
     function run() external {
         require(TREASURY_SAFE.code.length > 0, "CreateVote: the Treasury Safe is not deployed");
         Amounts memory amounts = readAmounts();
