@@ -31,8 +31,8 @@ contract VerifyVote is Script, ShutdownScript {
             keccak256(onChain) == keccak256(script_),
             "VerifyVote: the vote's script is not proposal/generated/script.hex"
         );
-        console.log("vote", voteId, "holds the committed script,", script_.length);
-        console.log("bytes, keccak256", vm.toString(keccak256(script_)));
+        console.log("vote", voteId, "holds the committed script, bytes:", script_.length);
+        console.log("keccak256", vm.toString(keccak256(script_)));
 
         // `getVote` returns neither the creator nor the metadata, only the StartVote log has them. A vote's snapshot
         // block is the block before the one it was created in, so the log is in the block after it.
@@ -89,10 +89,7 @@ contract VerifyVote is Script, ShutdownScript {
 
     function _covered(string memory what, uint256 balance, uint256 amount) internal pure {
         require(balance >= amount, string.concat("VerifyVote: ", what, " fell below the amount in the script"));
-        console.log(
-            what,
-            balance == amount ? "is the amount in the script" : "exceeds the amount in the script by",
-            balance - amount
-        );
+        if (balance == amount) console.log(what, "is the amount in the script");
+        else console.log(what, "exceeds the amount in the script by", balance - amount);
     }
 }
