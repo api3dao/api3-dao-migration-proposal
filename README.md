@@ -16,7 +16,7 @@ The RPC is a rate limited mainnet archive endpoint in `foundry.toml`, shared by 
 
 ```bash
 # Check that a posted vote (e.g. "primary-17" in the DAO dashboard) is the proposal this code builds
-forge script script/VerifyVote.s.sol --sig "run(uint256)" <id>
+forge script script/VerifyVote.s.sol --sig "run(uint256)" <VOTE_ID>
 
 # Run the fork tests
 ./test.sh
@@ -72,6 +72,8 @@ Built at block 26274256, 28 calls, 4884 bytes.
 | 27 | voting app | ACL `0x1e7ecc6d3b5b4cfdfc71cb7c3ea9ac4a55f4195a` | `revokePermission`(primary voting app `0xdb6c812e439ce5c740570578681ea7aadba5170b`, ACL `0x1e7ecc6d3b5b4cfdfc71cb7c3ea9ac4a55f4195a`, CREATE_PERMISSIONS_ROLE) |
 | 28 | voting app | ACL `0x1e7ecc6d3b5b4cfdfc71cb7c3ea9ac4a55f4195a` | `removePermissionManager`(ACL `0x1e7ecc6d3b5b4cfdfc71cb7c3ea9ac4a55f4195a`, CREATE_PERMISSIONS_ROLE) |
 
+The names next to the addresses are labels this decoder assigns for readability, they are not part of the script. The addresses are what the script holds, check them against the proposal.
+
 <!-- /script-table -->
 
 ## What the tests assert
@@ -90,4 +92,4 @@ The tests follow the branching tree technique: each `.tree` file spells out what
 
 [script/CreateVote.s.sol](script/CreateVote.s.sol) generates the proposal calldata from the chain state at the current block, ready to be submitted by the Vault Safe to the Aragon voting contract, and prints where it wrote it. Nothing is sent.
 
-[script/VerifyVote.s.sol](script/VerifyVote.s.sol) checks a posted vote, `<id>` being the number in its DAO dashboard URL, `primary-<id>`: it rebuilds the proposal from this code at the vote's snapshot block and compares it with the vote on the chain, the script, the metadata and the Vault Safe as the creator. Read-only.
+[script/VerifyVote.s.sol](script/VerifyVote.s.sol) checks a posted vote, `<VOTE_ID>` being the number in its DAO dashboard URL, `primary-<VOTE_ID>`: it rebuilds the proposal from this code at the vote's snapshot block and compares it with the vote on the chain, the script, the metadata and the Vault Safe as the creator. Read-only.

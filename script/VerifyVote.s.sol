@@ -11,9 +11,9 @@ import "../src/ShutdownScript.sol";
 /// to name the Vault Safe as the creator. The vote is the tested thing when this passes, since the fork tests run on
 /// the script the same source builds. Read-only.
 ///
-///   forge script script/VerifyVote.s.sol --sig "run(uint256)" <vote id>
+///   forge script script/VerifyVote.s.sol --sig "run(uint256)" <VOTE_ID>
 ///
-/// The vote id is the number in the proposal's DAO dashboard URL, `primary-<vote id>`.
+/// The vote id is the number in the proposal's DAO dashboard URL, `primary-<VOTE_ID>`.
 contract VerifyVote is Script, ShutdownScript {
     bytes32 constant START_VOTE_TOPIC = keccak256("StartVote(uint256,address,string)");
 
