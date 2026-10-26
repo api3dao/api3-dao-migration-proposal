@@ -11,19 +11,14 @@ import "../src/ShutdownScript.sol";
 /// to name the Vault Safe as the creator. The vote is the tested thing when this passes, since the fork tests run on
 /// the script the same source builds. Read-only.
 ///
-///   forge script script/VerifyVote.s.sol
-///   forge script script/VerifyVote.s.sol --sig "check(uint256)" <vote id>
+///   forge script script/VerifyVote.s.sol --sig "run(uint256)" <vote id>
+///
+/// The vote id is the number in the proposal's DAO dashboard URL, `primary-<vote id>`.
 contract VerifyVote is Script, ShutdownScript {
     bytes32 constant START_VOTE_TOPIC = keccak256("StartVote(uint256,address,string)");
-    /// The next primary vote on the DAO, 16 being the last one posted. Updated should another vote land first.
-    uint256 constant VOTE_ID = 17;
 
-    function run() external {
-        check(VOTE_ID);
-    }
-
-    function check(uint256 voteId) public {
-        require(voteId < VOTING.votesLength(), "VerifyVote: the vote has not been posted yet");
+    function run(uint256 voteId) external {
+        require(voteId < VOTING.votesLength(), "VerifyVote: no vote with this id has been posted yet");
         (bool open, bool executed,, uint64 snapshotBlock,,,,,, bytes memory posted) = VOTING.getVote(voteId);
         console.log("vote", voteId, executed ? "executed" : open ? "open" : "closed", "snapshot block");
         console.log(snapshotBlock);
