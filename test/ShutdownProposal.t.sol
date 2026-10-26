@@ -34,7 +34,7 @@ abstract contract ShutdownProposalBase is Test, ShutdownScript {
         voters = vm.parseJsonAddressArray(json, ".voters");
         stakers = vm.parseJsonAddressArray(json, ".stakers");
 
-        // The permissions Appendix A relies on, as they stand on chain.
+        // The permissions the script relies on, as they stand on chain.
         assertTrue(API3.getMinterStatus(address(POOL)), "pool starts as a minter");
         assertEq(API3.owner(), address(AGENT), "primary Agent owns the token");
         assertTrue(ACL.hasPermission(ANY_ENTITY, address(VOTING), CREATE_VOTES_ROLE), "anyone can create primary votes");
@@ -428,7 +428,7 @@ contract ShutdownProposalTest is ShutdownProposalBase {
         );
 
         // The primary voting app was the only holder, so a vote that somehow executes is the
-        // strongest caller there is. Row 10 left vote creation without a manager, which is the
+        // strongest caller there is. Calls 15 and 16 left vote creation without a manager, which is the
         // state createPermission needs, and it still fails.
         vm.startPrank(address(VOTING));
         vm.expectRevert(bytes("APP_AUTH_FAILED"));

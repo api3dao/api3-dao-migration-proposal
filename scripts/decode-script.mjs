@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-// Prints the calls of a CallsScript as a markdown table, for ticking Appendix A row by row.
+// Prints the calls of a vote script as a markdown table, one row per call.
 //
 //   node scripts/decode-script.mjs proposal/generated/script.hex
 //
 // The script is split into (target, calldata) entries, a call the primary Agent forwards through `execute` is unwrapped,
 // and the calldata is decoded against the signatures the wind-down vote can contain. Anything else is printed raw, so an
-// unexpected call stands out. A reading aid, the byte for byte comparisons are the forge tests. Needs `cast` for the
-// hashes. Read-only, no dependencies.
+// unexpected call stands out. The names next to the addresses are labels this file assigns for readability (NAMES
+// below), the addresses are what the script holds, and the output says so. A reading aid, the byte for byte
+// comparisons are the forge tests. Needs `cast` for the hashes. Read-only, no dependencies.
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
@@ -153,6 +154,9 @@ const main = (path) => {
   console.log('| # | caller | target | call |');
   console.log('| - | ------ | ------ | ---- |');
   rows.forEach(([caller, target, call], i) => console.log(`| ${i + 1} | ${caller} | ${name(target)} | ${call} |`));
+  console.log(
+    '\nThe names next to the addresses are labels this decoder assigns for readability, they are not part of the script. The addresses are what the script holds, check them against the proposal.',
+  );
 };
 
 if (process.argv.length !== 3) {

@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import "../src/ShutdownScript.sol";
 
-/// @notice Shared fixture of the fork tests. Forks mainnet, checks the permissions Appendix A relies on, builds the
+/// @notice Shared fixture of the fork tests. Forks mainnet, checks the permissions the script relies on, builds the
 /// vote script from the source at the fork block, the metadata from the proposal files, and passes the vote with the
 /// voters in test/data/voters.json, real holders of voting power. The posted vote is checked against the same source
 /// by script/VerifyVote.s.sol.
@@ -32,7 +32,7 @@ abstract contract Base_Test is Test, ShutdownScript {
         amounts = readAmounts();
         script = buildScript(amounts);
         metadata = buildMetadata(vm.readLine("proposal/title.txt"), vm.trim(vm.readFile("proposal/description.md")));
-        _assertPermissionsAppendixAReliesOn();
+        _assertPermissionsTheScriptReliesOn();
 
         treasuryApi3Before = API3.balanceOf(TREASURY_SAFE);
         agentSafeUsdcBefore = USDC.balanceOf(AGENT_SAFE);
@@ -45,8 +45,8 @@ abstract contract Base_Test is Test, ShutdownScript {
         _pass(voteId);
     }
 
-    /// The permissions Appendix A relies on, as they stand on chain.
-    function _assertPermissionsAppendixAReliesOn() internal view {
+    /// The permissions the script relies on, as they stand on chain.
+    function _assertPermissionsTheScriptReliesOn() internal view {
         assertTrue(API3.getMinterStatus(address(POOL)), "pool starts as a minter");
         assertEq(API3.owner(), address(AGENT), "primary Agent owns the token");
         assertTrue(ACL.hasPermission(ANY_ENTITY, address(VOTING), CREATE_VOTES_ROLE), "anyone can create primary votes");
