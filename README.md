@@ -15,7 +15,7 @@ The RPC is a rate limited mainnet archive endpoint in `foundry.toml`, shared by 
 ## Running
 
 ```bash
-# Check that the posted vote is the proposal this code builds
+# Check that the posted vote, primary-17 in the DAO dashboard, is the proposal this code builds
 forge script script/VerifyVote.s.sol
 
 # Run the fork tests
@@ -90,4 +90,4 @@ The tests follow the branching tree technique: each `.tree` file spells out what
 
 [script/CreateVote.s.sol](script/CreateVote.s.sol) generates the proposal calldata from the chain state at the current block, ready to be submitted by the Vault Safe to the Aragon voting contract, and prints where it wrote it. Nothing is sent.
 
-[script/VerifyVote.s.sol](script/VerifyVote.s.sol) checks the posted vote, the next primary vote on the DAO, id 17: it rebuilds the proposal from this code at the vote's snapshot block and compares it with the vote on the chain, the script, the metadata and the Vault Safe as the creator. `--sig "check(uint256)" <id>` checks another vote. Read-only.
+[script/VerifyVote.s.sol](script/VerifyVote.s.sol) checks the posted vote, `primary-17` in the DAO dashboard, the next primary vote on the DAO: it rebuilds the proposal from this code at the vote's snapshot block and compares it with the vote on the chain, the script, the metadata and the Vault Safe as the creator. `--sig "check(uint256)" <id>` checks another vote. Read-only.
