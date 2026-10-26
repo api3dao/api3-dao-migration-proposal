@@ -8,6 +8,7 @@ interface IApi3Voting {
     function vote(uint256 voteId, bool inFavor, bool executesIfDecided) external;
     function executeVote(uint256 voteId) external;
     function canExecute(uint256 voteId) external view returns (bool);
+    function votesLength() external view returns (uint256);
     function voteTime() external view returns (uint64);
     function supportRequiredPct() external view returns (uint64);
     function minAcceptQuorumPct() external view returns (uint64);

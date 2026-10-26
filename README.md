@@ -15,23 +15,23 @@ The RPC is a rate limited mainnet archive endpoint in `foundry.toml`, shared by 
 ## Running
 
 ```bash
-# Check a posted vote against the source, <vote id> is the number in the proposal's dashboard URL
-forge script script/VerifyVote.s.sol --sig "run(uint256)" <vote id>
+# Check that the posted vote is the proposal this code builds
+forge script script/VerifyVote.s.sol
 
 # Run the fork tests
 ./test.sh
 
-# Generate the proposal calldata for posting, into proposal/generated/
+# Generate the proposal calldata for posting
 forge script script/CreateVote.s.sol
 
-# Print any CallsScript as a table
+# Print a vote script as a table
 node scripts/decode-script.mjs <script.hex or 0x bytes>
 
-# Rebuild the table below from the source at a block
+# Rebuild the table below from the code at a block
 node scripts/update-readme.mjs <block>
 ```
 
-`test.sh` checks that every `.tree` matches its test file and runs the fork suite on the script the source builds at the latest block. Arguments go to `forge test`. [CI](.github/workflows/ci.yml) runs it and the table check on every pull request and push to `main`.
+`test.sh` checks that every `.tree` matches its test file and runs the fork suite on the proposal the code builds at the latest block. Arguments go to `forge test`. [CI](.github/workflows/ci.yml) runs it and the table check on every pull request and push to `main`.
 
 ## What the vote does
 
@@ -80,7 +80,7 @@ The tests follow the branching tree technique: each `.tree` file spells out what
 
 | tree                                       | what it checks                                                                                                                                      |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [test/vote/script.tree](test/vote/script.tree)     | the bytes: the CallsScript shape and its 28 calls, every call on the ACL or the primary Agent, the metadata from the proposal files, a deployed Treasury Safe |
+| [test/vote/script.tree](test/vote/script.tree)     | the bytes: the script's shape and its 28 calls, every call on the ACL or the primary Agent, the metadata from the proposal files, a deployed Treasury Safe |
 | [test/vote/execute.tree](test/vote/execute.tree)   | the outcome on both paths: supply exactly 200,000,000, the token frozen, both agents emptied into the multisigs, the Treasury Safe credited, the overshoot burned on the late path, a burn before execution left as it is |
 | [test/dao/closed.tree](test/dao/closed.tree)       | the old DAO after the vote: no vote can be created, support and quorum at the maximum, the root permissions gone, even for the primary voting app itself |
 | [test/pool/rewards.tree](test/pool/rewards.tree)   | `mintReward()` mints nothing after the shutdown, the total stake holds and the epoch cursor keeps advancing                                           |
@@ -88,6 +88,6 @@ The tests follow the branching tree technique: each `.tree` file spells out what
 
 ## Creating and verifying the proposal
 
-[script/CreateVote.s.sol](script/CreateVote.s.sol) generates the proposal calldata from the chain state at the current block, ready to be submitted by the Vault Safe to the Aragon voting contract. The script, the metadata built from [proposal/title.txt](proposal/title.txt) and [proposal/description.md](proposal/description.md), and the script's hash land in the gitignored `proposal/generated/`. Nothing is sent.
+[script/CreateVote.s.sol](script/CreateVote.s.sol) generates the proposal calldata from the chain state at the current block, ready to be submitted by the Vault Safe to the Aragon voting contract, and prints where it wrote it. Nothing is sent.
 
-[script/VerifyVote.s.sol](script/VerifyVote.s.sol) checks a posted vote: it rebuilds the proposal from the source at the vote's snapshot block and compares it with the vote on the chain, the script, the metadata and the Vault Safe as the creator. Read-only.
+[script/VerifyVote.s.sol](script/VerifyVote.s.sol) checks the posted vote, the next primary vote on the DAO, id 17: it rebuilds the proposal from this code at the vote's snapshot block and compares it with the vote on the chain, the script, the metadata and the Vault Safe as the creator. `--sig "check(uint256)" <id>` checks another vote. Read-only.
