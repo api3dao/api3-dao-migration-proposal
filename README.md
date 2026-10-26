@@ -35,7 +35,7 @@ node scripts/update-readme.mjs <block>
 
 ## What the vote does
 
-One primary vote whose script makes the 28 calls below, in this order. Calls to the ACL and the primary Agent come from the primary voting app, everything else goes through the primary Agent's `execute`. The amounts are the balances at the block the script was built at, the posted vote fixes them at its posting block. The script follows Appendix A of the proposal text.
+One primary vote whose script makes the 28 calls below, in this order. Calls to the ACL and the primary Agent come from the primary voting app, everything else goes through the primary Agent's `execute`. The amounts are the balances at the block the script was built at, the posted vote fixes them at its posting block. The calls are the ones the proposal text lists.
 
 <!-- script-table -->
 
