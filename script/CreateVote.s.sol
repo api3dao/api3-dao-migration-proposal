@@ -9,6 +9,7 @@ import "../src/ShutdownScript.sol";
 /// title and description come from `proposal/title.txt` and `proposal/description.md`. Nothing is sent.
 contract CreateVote is Script, ShutdownScript {
     function run() external {
+        require(TREASURY_SAFE.code.length > 0, "CreateVote: the Treasury Safe is not deployed");
         Amounts memory amounts = readAmounts();
         bytes memory script_ = buildScript(amounts);
         string memory title = vm.readLine("proposal/title.txt");
