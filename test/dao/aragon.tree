@@ -1,4 +1,4 @@
-Dao_Closed_Test
+Dao_Aragon_Test
 ├── when anyone tries to create a vote on either app
 │   └── it should revert with APP_AUTH_FAILED.
 ├── it should leave vote creation on both apps without a permission manager.

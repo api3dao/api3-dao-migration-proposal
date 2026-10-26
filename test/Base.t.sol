@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import {Test, console} from "forge-std/Test.sol";
-import "../src/ShutdownScript.sol";
+import "../src/MigrationScript.sol";
 
 /// @notice Shared fixture of the fork tests. Forks mainnet, checks the permissions the script relies on, builds the
 /// vote script from the source at the fork block, the metadata from the proposal files, and passes the vote with the
@@ -11,7 +11,7 @@ import "../src/ShutdownScript.sol";
 ///
 /// Execution is left to the tests: `executeNow` is the intended path, `executeAfterOneMoreEpoch` the fallback that
 /// burns the overshoot. Fork only, nothing here touches mainnet.
-abstract contract Base_Test is Test, ShutdownScript {
+abstract contract Base_Test is Test, MigrationScript {
     address[] voters;
     address[] stakers;
     bytes script;
@@ -125,7 +125,7 @@ abstract contract Base_Test is Test, ShutdownScript {
     /// What every execution path has to leave behind.
     function _assertOutcome() internal view {
         assertEq(API3.totalSupply(), TARGET_SUPPLY, "total supply is exactly 200M");
-        assertEq(API3.owner(), DEAD, "token owner is the dead address, minter set is frozen");
+        assertEq(API3.owner(), DEAD, "token owner is the dead address, minter set is final");
         assertFalse(API3.getMinterStatus(address(POOL)), "pool cannot mint");
         assertFalse(API3.getMinterStatus(address(AGENT)), "agent cannot mint");
         assertEq(API3.balanceOf(address(AGENT)), 0, "primary agent emptied");

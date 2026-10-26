@@ -84,7 +84,7 @@ contract Pool_Staking_Test is Executed_Test {
         console.log("withdrawn total (API3)      ", (unstaked - vesting) / 1e18);
     }
 
-    function test_WhenANewAddressDepositsAndStakesAfterTheShutdown() external {
+    function test_WhenANewAddressDepositsAndStakesAfterTheMigration() external {
         // it should record the stake.
         // it should let it unstake after seven days with nothing locked.
         // it should return the full deposit on withdrawal.
@@ -116,7 +116,7 @@ contract Pool_Staking_Test is Executed_Test {
     }
 
     function test_WhenAnExistingStakerExitsHalfThenComesBackAndExitsFullyAYearLater() external {
-        // it should advance the reward cursor without minting on the first call after the shutdown.
+        // it should advance the reward cursor without minting on the first call after the migration.
         // it should return the scheduled half and keep the rest staked.
         // it should withdraw the unlocked part and take the same amount back as stake.
         // it should hold nothing locked a year after the last mint and withdraw everything, except API3 the old TimelockManager contract deposited for the staker, which only that contract releases.
@@ -131,7 +131,7 @@ contract Pool_Staking_Test is Executed_Test {
         _passDays(7);
         _passDays(10);
 
-        // Schedule a partial unstake. This is the first call into the pool since the shutdown, so it is also the
+        // Schedule a partial unstake. This is the first call into the pool since the migration, so it is also the
         // first reward mint attempt with the minter status gone.
         uint256 stakeBefore = POOL.userStake(staker);
         uint256 halfStake = stakeBefore / 2;

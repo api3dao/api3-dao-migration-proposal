@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import {Script, console} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
-import "../src/ShutdownScript.sol";
+import "../src/MigrationScript.sol";
 
 /// @notice Checks a posted vote against the source: rebuilds the script at the vote's snapshot block, the way
 /// `CreateVote.s.sol` built it for posting, and the metadata from `proposal/title.txt` and `proposal/description.md`,
@@ -14,7 +14,7 @@ import "../src/ShutdownScript.sol";
 ///   forge script script/VerifyVote.s.sol --sig "run(uint256)" <VOTE_ID>
 ///
 /// The vote id is the number in the proposal's DAO dashboard URL, `primary-<VOTE_ID>`.
-contract VerifyVote is Script, ShutdownScript {
+contract VerifyVote is Script, MigrationScript {
     bytes32 constant START_VOTE_TOPIC = keccak256("StartVote(uint256,address,string)");
 
     function run(uint256 voteId) external {

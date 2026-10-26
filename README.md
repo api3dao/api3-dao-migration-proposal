@@ -1,6 +1,6 @@
 # API3 DAO migration proposal
 
-Everything behind the primary vote that winds down the Aragon-based API3 DAO and moves governance to Snapshot: the vote script, Foundry fork tests that run it through the real Aragon apps and check that the staking pool keeps working afterwards, and a decoder that prints the script as a table. Everything runs against a fork, nothing here broadcasts a transaction to mainnet.
+Everything behind the primary vote that moves API3 governance from the legacy DAO to Snapshot: the vote script, Foundry fork tests that run it through the real Aragon apps and check that the staking pool keeps working afterwards, and a decoder that prints the script as a table. Everything runs against a fork, nothing here broadcasts a transaction to mainnet.
 
 ## Prerequisites
 
@@ -83,9 +83,9 @@ The tests follow the branching tree technique: each `.tree` file spells out what
 | tree                                       | what it checks                                                                                                                                      |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [test/vote/script.tree](test/vote/script.tree)     | the bytes: the script's shape and its 28 calls, every call on the ACL or the primary Agent, the metadata from the proposal files, a deployed Treasury Safe |
-| [test/vote/execute.tree](test/vote/execute.tree)   | the outcome on both paths: supply exactly 200,000,000, the token frozen, both agents emptied into the multisigs, the Treasury Safe credited, the overshoot burned on the late path, a burn before execution left as it is |
-| [test/dao/closed.tree](test/dao/closed.tree)       | the old DAO after the vote: no vote can be created, support and quorum at the maximum, the root permissions gone, even for the primary voting app itself |
-| [test/pool/rewards.tree](test/pool/rewards.tree)   | `mintReward()` mints nothing after the shutdown, the total stake holds and the epoch cursor keeps advancing                                           |
+| [test/vote/execute.tree](test/vote/execute.tree)   | the outcome on both paths: supply exactly 200,000,000, the minter set final, both agents emptied into the multisigs, the Treasury Safe credited, the overshoot burned on the late path, a burn before execution left as it is |
+| [test/dao/aragon.tree](test/dao/aragon.tree)       | the legacy voting apps after the migration: no new vote can be created, support and quorum at the maximum, the root permissions gone, even for the primary voting app itself |
+| [test/pool/rewards.tree](test/pool/rewards.tree)   | `mintReward()` mints nothing after the migration, the total stake holds and the epoch cursor keeps advancing                                           |
 | [test/pool/staking.tree](test/pool/staking.tree)   | stakers keep every right but voting: a full exit, locked rewards unlocking over 52 epochs, a new staker's round trip, a partial exit and re-entry over a year |
 
 ## Creating and verifying the proposal

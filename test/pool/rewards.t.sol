@@ -5,7 +5,7 @@ import {Executed_Test} from "../Base.t.sol";
 
 /// The pool's reward clock after the minter status is gone.
 contract Pool_Rewards_Test is Executed_Test {
-    function test_WhenRewardEpochsPassAfterTheShutdown() external {
+    function test_WhenRewardEpochsPassAfterTheMigration() external {
         // it should mint nothing on mintReward.
         // it should leave the total stake unchanged.
         // it should keep advancing the epoch cursor.
