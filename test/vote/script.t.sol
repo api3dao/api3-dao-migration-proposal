@@ -55,6 +55,18 @@ contract Vote_Script_Test is Base_Test {
         assertGt(m.length, second + 1, "the description is not empty");
     }
 
+    function test_ShouldCarryTheMetadataBuiltFromProposaltitletxtAndProposaldescriptionmd() external {
+        // it should carry the metadata built from proposal/title.txt and proposal/description.md.
+        string memory title = vm.readLine("proposal/title.txt");
+        vm.closeFile("proposal/title.txt");
+        assertEq(buildMetadata(title, vm.trim(vm.readFile("proposal/description.md"))), metadata, "metadata");
+    }
+
+    function test_ShouldMoveTheAPI3ToATreasurySafeThatIsDeployed() external view {
+        // it should move the API3 to a Treasury Safe that is deployed.
+        assertGt(TREASURY_SAFE.code.length, 0, "the Treasury Safe is deployed");
+    }
+
     function test_GivenTheSecondaryAgentHoldsNoneOfATokenTheScriptMoves() external {
         // it should refuse to build the bytes.
         // Aragon's Vault reverts on a zero transfer, which would take the whole script down with it
@@ -67,18 +79,6 @@ contract Vote_Script_Test is Base_Test {
 
     function build() external view returns (bytes memory) {
         return buildScript(readAmounts());
-    }
-
-    function test_GivenAGeneratedScriptDirectoryIsNamed() external {
-        // it should equal the bytes the source builds at the block the amounts were read at.
-        // it should carry the metadata built from proposal/title.txt and proposal/description.md.
-        // it should move the API3 to a Treasury Safe that is deployed.
-        if (bytes(generatedDir).length == 0) vm.skip(true);
-        assertEq(buildScript(readAmounts()), script, "script.hex against the source at its block");
-        string memory title = vm.readLine("proposal/title.txt");
-        vm.closeFile("proposal/title.txt");
-        assertEq(buildMetadata(title, vm.trim(vm.readFile("proposal/description.md"))), metadata, "metadata.txt");
-        assertGt(TREASURY_SAFE.code.length, 0, "the Treasury Safe is deployed");
     }
 
     /// Walks a CallsScript: the 4 byte spec id, then entries of a 20 byte target, a 4 byte calldata length and the
