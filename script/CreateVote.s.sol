@@ -18,7 +18,9 @@ contract CreateVote is Script, ShutdownScript {
         Amounts memory amounts = readAmounts();
         bytes memory script_ = buildScript(amounts);
         string memory title = vm.readLine("proposal/title.txt");
-        string memory description = vm.readFile("proposal/description.md");
+        // Without the file's trailing newline, so that the string has one spelling wherever it is rebuilt from the
+        // files, by tools that trim their arguments as well as by ones that do not.
+        string memory description = vm.trim(vm.readFile("proposal/description.md"));
         string memory metadata = buildMetadata(title, description);
 
         vm.writeFile("proposal/generated/script.hex", vm.toString(script_));

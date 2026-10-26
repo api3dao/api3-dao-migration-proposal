@@ -19,7 +19,7 @@ One primary vote whose script makes the 28 calls below, in this order. Calls to 
 
 <!-- script-table -->
 
-Built at block 26274163 ([proposal/generated/amounts.json](proposal/generated/amounts.json)), 28 calls, 4884 bytes.
+Built at block 26274256 ([proposal/generated/amounts.json](proposal/generated/amounts.json)), 28 calls, 4884 bytes.
 
 | # | caller | target | call |
 | - | ------ | ------ | ---- |
@@ -87,7 +87,7 @@ The tests follow the branching tree technique: each `.tree` file spells out what
 
 ## Proposal creation
 
-The vote is created programmatically, not through the DAO dashboard. [script/CreateVote.s.sol](script/CreateVote.s.sol) builds the script and the metadata string from the chain state at the current block and writes them to `proposal/generated/`, which is committed, and the Vault Safe posts exactly those bytes with `newVote(script, metadata, false, false)`. The title and description of the vote are [proposal/title.txt](proposal/title.txt) and [proposal/description.md](proposal/description.md), joined into the DAO dashboard's metadata scheme version 3 (`3`, title, description, separated by `0x1f`), the version the dashboard decodes from the script alone.
+The vote is created programmatically, not through the DAO dashboard. [script/CreateVote.s.sol](script/CreateVote.s.sol) builds the script and the metadata string from the chain state at the current block and writes them to `proposal/generated/`, which is committed, and the Vault Safe posts exactly those bytes with `newVote(script, metadata, false, false)`. The title and description of the vote are [proposal/title.txt](proposal/title.txt) and [proposal/description.md](proposal/description.md), joined into the DAO dashboard's metadata scheme version 3 (`3`, title, description without the file's trailing newline, separated by `0x1f`), the version the dashboard decodes from the script alone.
 
 ```bash
 forge script script/CreateVote.s.sol

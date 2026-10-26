@@ -89,7 +89,7 @@ abstract contract Base_Test is Test, ShutdownScript {
         string memory title = vm.readLine("proposal/title.txt");
         vm.closeFile("proposal/title.txt");
         assertEq(
-            buildMetadata(title, vm.readFile("proposal/description.md")),
+            buildMetadata(title, vm.trim(vm.readFile("proposal/description.md"))),
             metadata,
             "metadata.txt is the title and description in the dashboard's version 3 scheme"
         );

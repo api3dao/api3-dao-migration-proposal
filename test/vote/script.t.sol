@@ -77,7 +77,7 @@ contract Vote_Script_Test is Base_Test {
         assertEq(buildScript(readAmounts()), script, "script.hex against the source at its block");
         string memory title = vm.readLine("proposal/title.txt");
         vm.closeFile("proposal/title.txt");
-        assertEq(buildMetadata(title, vm.readFile("proposal/description.md")), metadata, "metadata.txt");
+        assertEq(buildMetadata(title, vm.trim(vm.readFile("proposal/description.md"))), metadata, "metadata.txt");
         assertGt(TREASURY_SAFE.code.length, 0, "the Treasury Safe is deployed");
     }
 
