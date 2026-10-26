@@ -8,9 +8,8 @@ import "../src/ShutdownScript.sol";
 /// `proposal/generated/`: the bytes, their keccak256 hash, the metadata string and the amounts they contain. The
 /// title and description come from `proposal/title.txt` and `proposal/description.md`.
 ///
-/// Without `--broadcast` nothing is sent, the `newVote` call is only simulated. With `--broadcast --unlocked
-/// --sender <Vault Safe>` against an anvil fork that impersonates the Vault Safe, the vote is posted there, which is
-/// how the dashboard preview gets its proposal. Posting the real vote is a Vault Safe transaction, not this script.
+/// Without `--broadcast` nothing is sent, the `newVote` call is only simulated, which checks that the Vault Safe
+/// clears the proposal threshold. Posting the real vote is a Vault Safe transaction, not this script.
 contract CreateVote is Script, ShutdownScript {
     function run() external {
         // The bytes name the Treasury Safe as the destination of the API3. Nothing gets written, let alone posted, for
@@ -47,6 +46,5 @@ contract CreateVote is Script, ShutdownScript {
         uint256 voteId = VOTING.newVote(script_, metadata, false, false);
         vm.stopBroadcast();
         console.log("vote id                   ", voteId);
-        vm.writeFile("proposal/generated/vote-id.txt", vm.toString(voteId));
     }
 }

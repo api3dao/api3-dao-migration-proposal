@@ -1,10 +1,10 @@
 # API3 DAO migration proposal
 
-Everything behind the primary vote that winds down the Aragon-based API3 DAO and moves governance to Snapshot: the vote script, Foundry fork tests that run it through the real Aragon apps and check that the staking pool keeps working afterwards, a decoder that prints the script as a table, and a preview of the proposal in the DAO dashboard. Everything runs against a fork, nothing here broadcasts a transaction to mainnet.
+Everything behind the primary vote that winds down the Aragon-based API3 DAO and moves governance to Snapshot: the vote script, Foundry fork tests that run it through the real Aragon apps and check that the staking pool keeps working afterwards and a decoder that prints the script as a table. Everything runs against a fork, nothing here broadcasts a transaction to mainnet.
 
 ## Running
 
-Needs [Foundry](https://getfoundry.sh) and a mainnet RPC in `ETH_RPC_URL`, an archive one if you pin a historical block. [bulloak](https://github.com/alexfertel/bulloak) checks the test trees, see below. The decoder and the dashboard preview need Node and pnpm, nothing else does.
+Needs [Foundry](https://getfoundry.sh) and a mainnet RPC in `ETH_RPC_URL`, an archive one if you pin a historical block. [bulloak](https://github.com/alexfertel/bulloak) checks the test trees, see below. The decoder needs Node, nothing else does.
 
 ```bash
 ./setup.sh
@@ -57,7 +57,7 @@ forge script script/CreateVote.s.sol --rpc-url mainnet
 node scripts/decode-script.mjs proposal/generated/script.hex
 ```
 
-The first command writes `proposal/generated/`: `script.hex`, `script-hash.txt` (its keccak256, which the dashboard has to know to show the proposal), `metadata.txt`, `amounts.json` with the block the amounts were read at, and `vote-id.txt`, which is only meaningful after a broadcast (see below). Without `--broadcast` the `newVote` call is simulated and nothing is sent. The second prints the calls as a table, one row per Appendix A call, with the roles, addresses and amounts named, and prints anything it does not recognise raw. It is a reading aid: the byte for byte comparisons are the tests below.
+The first command writes `proposal/generated/`: `script.hex`, `script-hash.txt` (its keccak256, which the dashboard has to know to show the proposal), `metadata.txt` and `amounts.json` with the block the amounts were read at. Without `--broadcast` the `newVote` call is simulated and nothing is sent. The second prints the calls as a table, one row per Appendix A call, with the roles, addresses and amounts named, and prints anything it does not recognise raw. It is a reading aid: the byte for byte comparisons are the tests below.
 
 To rebuild the published bytes rather than fresh ones, pin the block from `amounts.json`: `forge script script/CreateVote.s.sol --rpc-url mainnet --fork-block-number <block>` writes the same files again, against an archive node once the block is old. Every amount has to be positive when the bytes are built, Aragon's Vault refuses a zero transfer and one reverting call reverts the whole script, so a row with nothing left to move has to be dropped from the script instead.
 
@@ -72,24 +72,6 @@ Everything below is read-only and needs no account, only an RPC. The same suite 
 3. **The posted vote.** `VOTE_ID=<id> forge test` reads the script of that vote from the primary voting app with `getVote`, checks that the vote is open and not executed and that its script equals `proposal/generated/script.hex` byte for byte, reads the vote's `StartVote` log to check that the Vault Safe created it with the metadata in `metadata.txt` (`getVote` returns neither the creator nor the metadata), checks that the balances the script moves still equal the amounts in it and that the Treasury Safe has code, then passes that very vote with the listed voters and runs the suite on it. Run it in the epoch the vote was posted in, so the amounts in the vote are still the balances, otherwise the fallback path in `test/vote/execute.tree` is the one that applies. This mode checks the chain against the files, mode 2 checks the files against the source, so a verifier runs both. Run it on the tree tests, `--match-path 'test/*/*.t.sol'`: the older `test/ShutdownProposal.t.sol` always posts a vote of its own from the first listed voter, the Vault Safe once it has posted the real one, and fails on the pool's one week proposal cooldown.
 
 To read the posted bytes without Foundry's test runner, `cast call 0xDb6C812E439ce5c740570578681ea7aaDba5170b "getVote(uint256)(bool,bool,uint64,uint64,uint64,uint64,uint256,uint256,uint256,bytes)" <id> --rpc-url $ETH_RPC_URL` prints them last, and `node scripts/decode-script.mjs <bytes>` turns them into the Appendix A table. The DAO dashboard shows the proposal only if `script-hash.txt` is on its allowlist, so the hash is one more thing to compare.
-
-## Previewing the vote in the DAO dashboard
-
-```bash
-./dashboard-preview.sh
-```
-
-Forks mainnet with anvil as chain id 31337, has the impersonated Vault Safe post the vote through `CreateVote.s.sol`, writes the dashboard's `.env` so that its hardhat network entry points at the fork and the script's hash is known to it, and starts the dashboard. The script prints the proposal's URL. The dashboard checkout is `./api3-dao-dashboard`, which `setup.sh` clones, `DASHBOARD_DIR` overrides it. Rendering a proposal with several calls needs the dashboard's `multi-call-proposals` branch until it is upstream.
-
-Open the URL in a browser profile without a wallet extension and the dashboard connects by itself as the first anvil account. With MetaMask, add a network by hand and connect through it:
-
-- RPC URL `http://localhost:57751`
-- chain id `31337`
-- currency symbol `ETH`
-
-The header reads "Connected to hardhat" once that network is selected, the dashboard reaches the fork through its hardhat network entry, whose addresses are the mainnet ones. `ANVIL_PORT` and `DASHBOARD_PORT` change the ports. The script runs until it is stopped and takes anvil and the dashboard down with it, running it again gives a fresh fork and a new vote id.
-
-For a last check against the production build, run anvil with `--chain-id 1` instead, point the wallet's mainnet RPC at it, build the dashboard with `VITE_MAINNET_PROVIDER_URL` set to the fork and serve it with `pnpm preview`. That exercises the `mainnet` code path with the production addresses.
 
 ## Regenerating the voter set
 
