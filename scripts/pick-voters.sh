@@ -7,10 +7,10 @@
 # and taken greedily until they hold 75% of all shares, so the set keeps passing the 50% bar for
 # a while as stakes drift.
 #
-# Needs cast, curl, jq and python3. Read-only.
+# Needs forge, cast, curl, jq and python3. Read-only, against ETH_RPC_URL or the endpoint in foundry.toml.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-ETH_RPC_URL=${ETH_RPC_URL:?set ETH_RPC_URL to a mainnet RPC}
+ETH_RPC_URL=${ETH_RPC_URL:-$(forge config --json | jq -r .eth_rpc_url)}
 FORK_BLOCK=${FORK_BLOCK:-$(cast block-number --rpc-url "$ETH_RPC_URL")}
 POOL_DEPLOY_BLOCK=12800000
 POOL=0x6dd655f10d4b9e242ae186d9050b68f725c76d76

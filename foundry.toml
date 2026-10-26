@@ -11,8 +11,6 @@ fs_permissions = [
   { access = 'read', path = './proposal' },
   { access = 'read-write', path = './proposal/generated' },
 ]
-# Resolved against the alias below, so plain `forge test` forks mainnet once ETH_RPC_URL is set.
-eth_rpc_url = "mainnet"
-
-[rpc_endpoints]
-mainnet = "${ETH_RPC_URL}"
+# A rate limited mainnet archive endpoint, shared by everyone who runs this, so that forge and cast work without an RPC
+# account. `--rpc-url <url>` on any command, or FOUNDRY_ETH_RPC_URL for a whole session, overrides it.
+eth_rpc_url = "https://lb.drpc.live/ethereum/Ap8y607N-kWQqs4ydkzcCwJx0S4NsO8R8YB0Mrvp6PLd"

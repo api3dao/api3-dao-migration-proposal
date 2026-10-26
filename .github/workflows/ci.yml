@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.8.5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Install bulloak
+        run: curl -sSL https://github.com/alexfertel/bulloak/releases/download/v0.8.1/bulloak-x86_64-unknown-linux-gnu.tar.gz | sudo tar xz -C /usr/local/bin bulloak
+      - run: ./setup.sh
+      - run: forge fmt --check
+      - name: Fork tests on the script the source builds now
+        run: ./test.sh
+      - name: Fork tests on the committed bytes
+        run: GENERATED_DIR=proposal/generated forge test
+      - name: README table is the committed bytes
+        run: node scripts/update-readme.mjs && git diff --exit-code README.md

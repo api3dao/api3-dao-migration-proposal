@@ -8,9 +8,8 @@ import "../src/ShutdownScript.sol";
 /// `proposal/generated/`: the bytes, their keccak256 hash, the metadata string and the amounts they contain. The
 /// title and description come from `proposal/title.txt` and `proposal/description.md`.
 ///
-/// Without `--broadcast` nothing is sent, the `newVote` call is only simulated. With `--broadcast --unlocked
-/// --sender <Vault Safe>` against an anvil fork that impersonates the Vault Safe, the vote is posted there, which is
-/// how the dashboard preview gets its proposal. Posting the real vote is a Vault Safe transaction, not this script.
+/// Without `--broadcast` nothing is sent, the `newVote` call is only simulated, which checks that the Vault Safe
+/// clears the proposal threshold. Posting the real vote is a Vault Safe transaction, not this script.
 contract CreateVote is Script, ShutdownScript {
     function run() external {
         // The bytes name the Treasury Safe as the destination of the API3. Nothing gets written, let alone posted, for
@@ -19,7 +18,9 @@ contract CreateVote is Script, ShutdownScript {
         Amounts memory amounts = readAmounts();
         bytes memory script_ = buildScript(amounts);
         string memory title = vm.readLine("proposal/title.txt");
-        string memory description = vm.readFile("proposal/description.md");
+        // Without the file's trailing newline, so that the string has one spelling wherever it is rebuilt from the
+        // files, by tools that trim their arguments as well as by ones that do not.
+        string memory description = vm.trim(vm.readFile("proposal/description.md"));
         string memory metadata = buildMetadata(title, description);
 
         vm.writeFile("proposal/generated/script.hex", vm.toString(script_));
@@ -47,6 +48,5 @@ contract CreateVote is Script, ShutdownScript {
         uint256 voteId = VOTING.newVote(script_, metadata, false, false);
         vm.stopBroadcast();
         console.log("vote id                   ", voteId);
-        vm.writeFile("proposal/generated/vote-id.txt", vm.toString(voteId));
     }
 }
