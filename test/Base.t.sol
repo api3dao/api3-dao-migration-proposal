@@ -4,15 +4,10 @@ pragma solidity 0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import "../src/ShutdownScript.sol";
 
-/// @notice Shared fixture of the fork tests. Forks mainnet, checks the permissions Appendix A relies on, takes the
-/// vote script from one of two places and passes the vote with the voters in test/data/voters.json, real holders of
-/// voting power:
-///
-/// - built from the source at the fork block, the default,
-/// - read from the files CreateVote.s.sol wrote when GENERATED_DIR names their directory, rolling the fork back to
-///   the block the amounts were read at and checking every file against the source.
-///
-/// The posted vote is checked against those files by script/VerifyVote.s.sol.
+/// @notice Shared fixture of the fork tests. Forks mainnet, checks the permissions Appendix A relies on, builds the
+/// vote script from the source at the fork block, the metadata from the proposal files, and passes the vote with the
+/// voters in test/data/voters.json, real holders of voting power. The posted vote is checked against the same source
+/// by script/VerifyVote.s.sol.
 ///
 /// Execution is left to the tests: `executeNow` is the intended path, `executeAfterOneMoreEpoch` the fallback that
 /// burns the overshoot. Fork only, nothing here touches mainnet.
@@ -21,7 +16,6 @@ abstract contract Base_Test is Test, ShutdownScript {
     address[] stakers;
     bytes script;
     string metadata;
-    string generatedDir;
     uint256 voteId;
     Amounts amounts;
     uint256 treasuryApi3Before;
@@ -35,7 +29,9 @@ abstract contract Base_Test is Test, ShutdownScript {
         voters = vm.parseJsonAddressArray(json, ".voters");
         stakers = vm.parseJsonAddressArray(json, ".stakers");
 
-        _loadVoteScript();
+        amounts = readAmounts();
+        script = buildScript(amounts);
+        metadata = buildMetadata(vm.readLine("proposal/title.txt"), vm.trim(vm.readFile("proposal/description.md")));
         _assertPermissionsAppendixAReliesOn();
 
         treasuryApi3Before = API3.balanceOf(TREASURY_SAFE);
@@ -47,52 +43,6 @@ abstract contract Base_Test is Test, ShutdownScript {
         vm.prank(_proposer());
         voteId = VOTING.newVote(script, metadata, true, false);
         _pass(voteId);
-    }
-
-    // ------------------------------------------------------------ the script
-
-    /// Where the bytes come from, see the contract comment. Amounts are fixed when the vote is posted, as the
-    /// proposal says, so the file mode takes them from amounts.json rather than from the fork block.
-    function _loadVoteScript() internal {
-        generatedDir = vm.envOr("GENERATED_DIR", string(""));
-
-        if (bytes(generatedDir).length == 0) {
-            amounts = readAmounts();
-            script = buildScript(amounts);
-            metadata = buildMetadata("API3 DAO migration", "Fork rehearsal");
-            console.log("script built from the source at block", block.number);
-            return;
-        }
-
-        string memory json = vm.readFile(string.concat(generatedDir, "/amounts.json"));
-        uint256 generatedBlock = vm.parseJsonUint(json, ".block");
-        amounts = Amounts({
-            mint: vm.parseJsonUint(json, ".mint"),
-            agentApi3: vm.parseJsonUint(json, ".agentApi3"),
-            secondaryUsdc: vm.parseJsonUint(json, ".secondaryUsdc"),
-            secondaryPnk: vm.parseJsonUint(json, ".secondaryPnk"),
-            secondaryWpokt: vm.parseJsonUint(json, ".secondaryWpokt"),
-            secondaryEth: vm.parseJsonUint(json, ".secondaryEth")
-        });
-        script = vm.parseBytes(vm.readFile(string.concat(generatedDir, "/script.hex")));
-        metadata = vm.readFile(string.concat(generatedDir, "/metadata.txt"));
-        bytes32 hash = vm.parseBytes32(vm.readFile(string.concat(generatedDir, "/script-hash.txt")));
-        assertEq(hash, keccak256(script), "script-hash.txt is the keccak256 of script.hex");
-        // Bytes to be posted name a deployed Treasury Safe
-        assertGt(TREASURY_SAFE.code.length, 0, "the Treasury Safe the bytes move the API3 to is deployed");
-        console.log("script read from", generatedDir, "generated at block", generatedBlock);
-
-        // The files are checked against the source where the source would produce them, at the block the amounts
-        // were read at. The fork rolls back to it, so the RPC has to still serve that block.
-        vm.rollFork(generatedBlock);
-        assertEq(buildScript(readAmounts()), script, "script.hex is what the source builds at its block");
-        string memory title = vm.readLine("proposal/title.txt");
-        vm.closeFile("proposal/title.txt");
-        assertEq(
-            buildMetadata(title, vm.trim(vm.readFile("proposal/description.md"))),
-            metadata,
-            "metadata.txt is the title and description in the dashboard's version 3 scheme"
-        );
     }
 
     /// The permissions Appendix A relies on, as they stand on chain.

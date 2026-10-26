@@ -5,34 +5,31 @@ import {Script, console} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
 import "../src/ShutdownScript.sol";
 
-/// @notice Checks the posted vote against the committed files: the script the primary voting app holds for it equals
-/// `proposal/generated/script.hex` byte for byte and the Vault Safe created it with `proposal/generated/metadata.txt`.
-/// Those files are what the fork tests run on (`GENERATED_DIR=proposal/generated forge test`) and what the source
-/// builds at their block, so this is the last link: the vote on the chain is the tested one. While the vote is open it
-/// also reports whether the balances the script moves still cover the amounts in it, since a shortfall would make
-/// the whole script revert at execution. Read-only.
+/// @notice Checks a posted vote against the source: rebuilds the script at the vote's snapshot block, the way
+/// `CreateVote.s.sol` built it for posting, and the metadata from `proposal/title.txt` and `proposal/description.md`,
+/// then compares both with what the primary voting app holds for the vote and with its StartVote log, which also has
+/// to name the Vault Safe as the creator. The vote is the tested thing when this passes, since the fork tests run on
+/// the script the same source builds. Read-only.
 ///
-/// `forge script script/VerifyVote.s.sol` takes the vote id from `proposal/vote-id.txt`, committed when the vote is
-/// posted. `--sig "check(uint256)" <id>` names one instead.
+///   forge script script/VerifyVote.s.sol --sig "run(uint256)" <vote id>
 contract VerifyVote is Script, ShutdownScript {
     bytes32 constant START_VOTE_TOPIC = keccak256("StartVote(uint256,address,string)");
 
-    function run() external view {
-        require(vm.exists("proposal/vote-id.txt"), "VerifyVote: no vote posted yet, proposal/vote-id.txt is missing");
-        check(vm.parseUint(vm.trim(vm.readFile("proposal/vote-id.txt"))));
-    }
+    function run(uint256 voteId) external {
+        (bool open, bool executed,, uint64 snapshotBlock,,,,,, bytes memory posted) = VOTING.getVote(voteId);
+        console.log("vote", voteId, executed ? "executed" : open ? "open" : "closed", "snapshot block");
+        console.log(snapshotBlock);
 
-    function check(uint256 voteId) public view {
-        bytes memory script_ = vm.parseBytes(vm.readFile("proposal/generated/script.hex"));
-        string memory metadata = vm.readFile("proposal/generated/metadata.txt");
-
-        (bool open, bool executed,, uint64 snapshotBlock,,,,,, bytes memory onChain) = VOTING.getVote(voteId);
+        // The amounts in the script are balances, so the source is run at the block the vote reads its state from.
+        // The Vault builds and posts in one sitting, so nothing moves in between.
+        vm.rollFork(snapshotBlock);
+        bytes memory expected = buildScript(readAmounts());
         require(
-            keccak256(onChain) == keccak256(script_),
-            "VerifyVote: the vote's script is not proposal/generated/script.hex"
+            keccak256(posted) == keccak256(expected),
+            "VerifyVote: the source at the vote's snapshot block builds a different script than the vote holds"
         );
-        console.log("vote", voteId, "holds the committed script, bytes:", script_.length);
-        console.log("keccak256", vm.toString(keccak256(script_)));
+        console.log("the posted script is the one the source builds, bytes:", posted.length);
+        console.log("keccak256", vm.toString(keccak256(posted)));
 
         // `getVote` returns neither the creator nor the metadata, only the StartVote log has them. A vote's snapshot
         // block is the block before the one it was created in, so the log is in the block after it.
@@ -41,55 +38,16 @@ contract VerifyVote is Script, ShutdownScript {
         topics[1] = bytes32(voteId);
         Vm.EthGetLogs[] memory logs = vm.eth_getLogs(snapshotBlock + 1, snapshotBlock + 1, address(VOTING), topics);
         require(logs.length == 1, "VerifyVote: no StartVote log for the vote in the block after its snapshot");
-        address creator = address(uint160(uint256(logs[0].topics[2])));
-        require(creator == VAULT, "VerifyVote: the Vault Safe did not create the vote");
+        require(
+            address(uint160(uint256(logs[0].topics[2]))) == VAULT, "VerifyVote: the Vault Safe did not create the vote"
+        );
+        string memory title = vm.readLine("proposal/title.txt");
+        string memory metadata = buildMetadata(title, vm.trim(vm.readFile("proposal/description.md")));
         require(
             keccak256(bytes(abi.decode(logs[0].data, (string)))) == keccak256(bytes(metadata)),
-            "VerifyVote: the vote's metadata is not proposal/generated/metadata.txt"
+            "VerifyVote: the vote's metadata is not the one built from proposal/title.txt and proposal/description.md"
         );
-        console.log("created by the Vault Safe with the committed metadata, snapshot block", snapshotBlock);
-
-        if (executed) {
-            console.log("the vote is executed");
-        } else {
-            console.log(open ? "the vote is open" : "the vote is closed, not executed");
-            _reportAmounts();
-        }
+        console.log("created by the Vault Safe with the metadata built from the proposal files");
         console.log("VERIFIED");
-    }
-
-    /// The amounts in the script are the balances when the bytes were built. A balance that fell since makes the
-    /// whole script revert at execution. A supply that grew is the rehearsed fallback: the Treasury Safe burns the
-    /// overshoot after execution.
-    function _reportAmounts() internal view {
-        string memory json = vm.readFile("proposal/generated/amounts.json");
-        uint256 mint = vm.parseJsonUint(json, ".mint");
-        uint256 supply = API3.totalSupply();
-        if (supply == TARGET_SUPPLY - mint) {
-            console.log("the supply is as it was when the bytes were built, the mint lands on the target");
-        } else {
-            console.log(
-                "the supply grew since the bytes were built, the mint overshoots by", supply + mint - TARGET_SUPPLY
-            );
-        }
-        _covered("primary Agent API3", API3.balanceOf(address(AGENT)), vm.parseJsonUint(json, ".agentApi3"));
-        _covered(
-            "secondary Agent USDC", USDC.balanceOf(address(AGENT_SECONDARY)), vm.parseJsonUint(json, ".secondaryUsdc")
-        );
-        _covered(
-            "secondary Agent PNK", PNK.balanceOf(address(AGENT_SECONDARY)), vm.parseJsonUint(json, ".secondaryPnk")
-        );
-        _covered(
-            "secondary Agent wPOKT",
-            WPOKT.balanceOf(address(AGENT_SECONDARY)),
-            vm.parseJsonUint(json, ".secondaryWpokt")
-        );
-        _covered("secondary Agent ETH", address(AGENT_SECONDARY).balance, vm.parseJsonUint(json, ".secondaryEth"));
-    }
-
-    function _covered(string memory what, uint256 balance, uint256 amount) internal pure {
-        require(balance >= amount, string.concat("VerifyVote: ", what, " fell below the amount in the script"));
-        if (balance == amount) console.log(what, "is the amount in the script");
-        else console.log(what, "exceeds the amount in the script by", balance - amount);
     }
 }

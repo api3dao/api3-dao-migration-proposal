@@ -1,7 +1,7 @@
 #!/bin/bash
 # The test command: checks that every .tree still matches its test file with bulloak, then runs the fork suite.
-# Arguments go to `forge test`, so `./test.sh -vv` or `./test.sh --match-path 'test/vote/*'` work, and so do the
-# environment variables the suite reads (GENERATED_DIR, FOUNDRY_ETH_RPC_URL).
+# Arguments go to `forge test`, so `./test.sh -vv` or `./test.sh --match-path 'test/vote/*'` work, and so does
+# FOUNDRY_ETH_RPC_URL for another RPC.
 set -euo pipefail
 cd "$(dirname "$0")"
 if ! command -v bulloak >/dev/null; then
