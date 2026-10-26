@@ -1,30 +1,27 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
 
-import {Test, Vm, console} from "forge-std/Test.sol";
+import {Test, console} from "forge-std/Test.sol";
 import "../src/ShutdownScript.sol";
 
 /// @notice Shared fixture of the fork tests. Forks mainnet, checks the permissions Appendix A relies on, takes the
-/// vote script from one of three places and passes the vote with the voters in test/data/voters.json, real holders
-/// of voting power:
+/// vote script from one of two places and passes the vote with the voters in test/data/voters.json, real holders of
+/// voting power:
 ///
 /// - built from the source at the fork block, the default,
-/// - read from the files CreateVote.s.sol wrote when GENERATED_DIR names their directory, forking at the block the
-///   amounts were read at and checking every file against the source,
-/// - read from the chain when VOTE_ID names a posted vote, checking its script against the files.
+/// - read from the files CreateVote.s.sol wrote when GENERATED_DIR names their directory, rolling the fork back to
+///   the block the amounts were read at and checking every file against the source.
+///
+/// The posted vote is checked against those files by script/VerifyVote.s.sol.
 ///
 /// Execution is left to the tests: `executeNow` is the intended path, `executeAfterOneMoreEpoch` the fallback that
 /// burns the overshoot. Fork only, nothing here touches mainnet.
 abstract contract Base_Test is Test, ShutdownScript {
-    uint256 constant NO_VOTE = type(uint256).max;
-    bytes32 constant START_VOTE_TOPIC = keccak256("StartVote(uint256,address,string)");
-
     address[] voters;
     address[] stakers;
     bytes script;
     string metadata;
     string generatedDir;
-    bool voteOnChain;
     uint256 voteId;
     Amounts amounts;
     uint256 treasuryApi3Before;
@@ -47,21 +44,17 @@ abstract contract Base_Test is Test, ShutdownScript {
         agentSafeWpoktBefore = WPOKT.balanceOf(AGENT_SAFE);
         agentSafeEthBefore = AGENT_SAFE.balance;
 
-        if (!voteOnChain) {
-            vm.prank(_proposer());
-            voteId = VOTING.newVote(script, metadata, true, false);
-        }
+        vm.prank(_proposer());
+        voteId = VOTING.newVote(script, metadata, true, false);
         _pass(voteId);
     }
 
     // ------------------------------------------------------------ the script
 
     /// Where the bytes come from, see the contract comment. Amounts are fixed when the vote is posted, as the
-    /// proposal says, so the file and chain modes take them from amounts.json rather than from the fork block.
+    /// proposal says, so the file mode takes them from amounts.json rather than from the fork block.
     function _loadVoteScript() internal {
-        uint256 envVote = vm.envOr("VOTE_ID", NO_VOTE);
-        voteOnChain = envVote != NO_VOTE;
-        generatedDir = vm.envOr("GENERATED_DIR", voteOnChain ? string("proposal/generated") : string(""));
+        generatedDir = vm.envOr("GENERATED_DIR", string(""));
 
         if (bytes(generatedDir).length == 0) {
             amounts = readAmounts();
@@ -89,23 +82,9 @@ abstract contract Base_Test is Test, ShutdownScript {
         assertGt(TREASURY_SAFE.code.length, 0, "the Treasury Safe the bytes move the API3 to is deployed");
         console.log("script read from", generatedDir, "generated at block", generatedBlock);
 
-        if (voteOnChain) {
-            voteId = envVote;
-            (bool open, bool executed, uint64 startDate, uint64 snapshotBlock,,,,,, bytes memory onChain) =
-                VOTING.getVote(voteId);
-            assertTrue(open, "the vote is open");
-            assertFalse(executed, "the vote is not executed");
-            assertEq(keccak256(onChain), keccak256(script), "the vote's script is the generated script");
-            _assertStartVote();
-            _assertAmountsStillHold();
-            console.log("vote", voteId, "on the chain, snapshot block", snapshotBlock);
-            console.log("vote start", startDate);
-            return;
-        }
-
         // The files are checked against the source where the source would produce them, at the block the amounts
-        // were read at. That block has to be one the RPC still serves.
-        vm.createSelectFork("mainnet", generatedBlock);
+        // were read at. The fork rolls back to it, so the RPC has to still serve that block.
+        vm.rollFork(generatedBlock);
         assertEq(buildScript(readAmounts()), script, "script.hex is what the source builds at its block");
         string memory title = vm.readLine("proposal/title.txt");
         vm.closeFile("proposal/title.txt");
@@ -114,34 +93,6 @@ abstract contract Base_Test is Test, ShutdownScript {
             metadata,
             "metadata.txt is the title and description in the dashboard's version 3 scheme"
         );
-    }
-
-    /// `getVote` returns neither the creator nor the metadata, only the StartVote log has them. A vote's snapshot
-    /// block is the block before the one it was created in, so the log is in the block after it.
-    function _assertStartVote() internal view {
-        (,,, uint64 snapshotBlock,,,,,,) = VOTING.getVote(voteId);
-        bytes32[] memory topics = new bytes32[](2);
-        topics[0] = START_VOTE_TOPIC;
-        topics[1] = bytes32(voteId);
-        Vm.EthGetLogs[] memory logs = vm.eth_getLogs(snapshotBlock + 1, snapshotBlock + 1, address(VOTING), topics);
-        assertEq(logs.length, 1, "one StartVote log for the vote");
-        assertEq(address(uint160(uint256(logs[0].topics[2]))), VAULT, "the Vault Safe created the vote");
-        assertEq(abi.decode(logs[0].data, (string)), metadata, "the vote carries the committed metadata");
-    }
-
-    /// The amounts in the posted script are the balances when the bytes were built. A balance that fell since makes
-    /// the whole script revert at execution, so a drift fails here, by name, rather than as a bare revert later.
-    function _assertAmountsStillHold() internal view {
-        assertEq(
-            API3.totalSupply(), TARGET_SUPPLY - amounts.mint, "the supply has not moved since the bytes were built"
-        );
-        assertEq(API3.balanceOf(address(AGENT)), amounts.agentApi3, "the primary Agent's API3 is the amount posted");
-        assertEq(USDC.balanceOf(address(AGENT_SECONDARY)), amounts.secondaryUsdc, "secondary Agent USDC is the amount");
-        assertEq(PNK.balanceOf(address(AGENT_SECONDARY)), amounts.secondaryPnk, "secondary Agent PNK is the amount");
-        assertEq(
-            WPOKT.balanceOf(address(AGENT_SECONDARY)), amounts.secondaryWpokt, "secondary Agent wPOKT is the amount"
-        );
-        assertEq(address(AGENT_SECONDARY).balance, amounts.secondaryEth, "secondary Agent ETH is the amount");
     }
 
     /// The permissions Appendix A relies on, as they stand on chain.
