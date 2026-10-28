@@ -12,26 +12,57 @@ import "../src/MigrationScript.sol";
 /// the script the same source builds. Read-only.
 ///
 ///   forge script script/VerifyVote.s.sol --sig "run(uint256)" <VOTE_ID>
+///   forge script script/VerifyVote.s.sol --sig "run(uint256,uint256)" <VOTE_ID> <BUILD_BLOCK>
 ///
-/// The vote id is the number in the proposal's DAO dashboard URL, `primary-<VOTE_ID>`.
+/// The vote id is the number in the proposal's DAO dashboard URL, `primary-<VOTE_ID>`. The bytes carry four balances
+/// read when they were built, so one wei of API3 burned, or of USDC or ETH sent to the secondary Agent, between the
+/// build and the posting changes what the source builds at the snapshot block and fails the first form. The second
+/// form takes the block the bytes were built at, `block` in the `proposal/generated/amounts.json` that
+/// `CreateVote.s.sol` wrote, rebuilds the script there and prints which of the four amounts moved between the build
+/// and the snapshot block, and by how much. The vote is then still exactly what the source built, with the amounts of
+/// the build block.
 contract VerifyVote is Script, MigrationScript {
     bytes32 constant START_VOTE_TOPIC = keccak256("StartVote(uint256,address,string)");
 
     function run(uint256 voteId) external {
+        _verify(voteId, 0);
+    }
+
+    function run(uint256 voteId, uint256 buildBlock) external {
+        require(buildBlock > 0, "VerifyVote: the build block is the one in proposal/generated/amounts.json");
+        _verify(voteId, buildBlock);
+    }
+
+    function _verify(uint256 voteId, uint256 buildBlock) internal {
         require(voteId < VOTING.votesLength(), "VerifyVote: no vote with this id has been posted yet");
         (bool open, bool executed,, uint64 snapshotBlock,,,,,, bytes memory posted) = VOTING.getVote(voteId);
         console.log("vote", voteId, executed ? "executed" : open ? "open" : "closed", "snapshot block");
         console.log(snapshotBlock);
 
         // The amounts in the script are balances, so the source is run at the block the vote reads its state from.
-        // The Vault builds and posts in one sitting, so nothing moves in between.
+        // The Vault builds and posts in one sitting, so nothing moves in between unless a third party moves it.
         vm.rollFork(snapshotBlock);
-        bytes memory expected = buildScript(readAmounts());
-        require(
-            keccak256(posted) == keccak256(expected),
-            "VerifyVote: the source at the vote's snapshot block builds a different script than the vote holds"
-        );
-        console.log("the posted script is the one the source builds, bytes:", posted.length);
+        Amounts memory atSnapshot = readAmounts();
+        if (keccak256(posted) == keccak256(buildScript(atSnapshot))) {
+            console.log("the posted script is the one the source builds at the snapshot block, bytes:", posted.length);
+        } else {
+            require(
+                buildBlock != 0,
+                "VerifyVote: the source at the vote's snapshot block builds a different script than the vote holds. If a balance moved between the build and the posting, rerun as run(uint256,uint256) with the block the bytes were built at"
+            );
+            require(buildBlock <= snapshotBlock, "VerifyVote: the build block has to be before the snapshot block");
+            vm.rollFork(buildBlock);
+            Amounts memory atBuild = readAmounts();
+            _report(atBuild, atSnapshot);
+            require(
+                keccak256(posted) == keccak256(buildScript(atBuild)),
+                "VerifyVote: the source builds a different script than the vote holds at the build block as well"
+            );
+            console.log("the posted script is the one the source builds at the build block, bytes:", posted.length);
+            console.log(
+                "the amounts marked moved changed between the build and the posting, the vote carries the build's"
+            );
+        }
         console.log("keccak256", vm.toString(keccak256(posted)));
 
         // `getVote` returns neither the creator nor the metadata, only the StartVote log has them. A vote's snapshot
@@ -52,5 +83,22 @@ contract VerifyVote is Script, MigrationScript {
         );
         console.log("created by the Vault Safe with the metadata built from the proposal files");
         console.log("VERIFIED");
+    }
+
+    /// The four amounts at the build block next to the ones at the snapshot block, "moved" where they differ.
+    function _report(Amounts memory atBuild, Amounts memory atSnapshot) internal pure {
+        console.log("amount: at the build block, at the snapshot block");
+        _line("mint, API3 wei", atBuild.mint, atSnapshot.mint);
+        _line("primary Agent API3, wei", atBuild.agentApi3, atSnapshot.agentApi3);
+        _line("secondary Agent USDC, 6 decimals", atBuild.secondaryUsdc, atSnapshot.secondaryUsdc);
+        _line("secondary Agent ETH, wei", atBuild.secondaryEth, atSnapshot.secondaryEth);
+    }
+
+    function _line(string memory name, uint256 atBuild, uint256 atSnapshot) internal pure {
+        if (atBuild == atSnapshot) {
+            console.log(name, atBuild, "unchanged");
+        } else {
+            console.log(name, atBuild, atSnapshot, atBuild < atSnapshot ? "moved up" : "moved down");
+        }
     }
 }
