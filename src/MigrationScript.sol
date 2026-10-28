@@ -23,8 +23,8 @@ abstract contract MigrationScript {
     address constant VAULT = 0x8e03609ed680B237C7b6f8020472CA0687308b24;
     /// Receives the API3 the vote moves, the mint and the primary Agent's balance. A Safe with the same five signers
     /// as the Vault and Agent Safes that only holds: its Snapshot voting power is delegated to the dead address, so the
-    /// treasury's weight stays apart from the Vault's delegated power. `CreateVote.s.sol` and the file and posted-vote
-    /// test modes check that the address has code.
+    /// treasury's weight stays apart from the Vault's delegated power. `CreateVote.s.sol` and the script tests check
+    /// that the address has code.
     address constant TREASURY_SAFE = 0xb7fa2Cb302C5dC127e61F27b92beC411cbf0AE4A;
     address constant AGENT_SAFE = 0xBBE0dE9757F93e3306aDBfeBE906AB285EDD13DA;
     address constant DEAD = 0x000000000000000000000000000000000000dEaD;
