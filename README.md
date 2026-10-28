@@ -18,6 +18,9 @@ The RPC is a rate limited mainnet archive endpoint in `foundry.toml`, shared by 
 # Check that a posted vote (e.g. "primary-17" in the DAO dashboard) is the proposal this code builds
 forge script script/VerifyVote.s.sol --sig "run(uint256)" <VOTE_ID>
 
+# The same when a balance moved between the build and the posting, <BUILD_BLOCK> is "block" in proposal/generated/amounts.json
+forge script script/VerifyVote.s.sol --sig "run(uint256,uint256)" <VOTE_ID> <BUILD_BLOCK>
+
 # Run the fork tests
 ./test.sh
 
@@ -91,3 +94,5 @@ The tests follow the branching tree technique: each `.tree` file spells out what
 [script/CreateVote.s.sol](script/CreateVote.s.sol) generates the proposal calldata from the chain state at the current block, ready to be submitted by the Vault Safe to the Aragon voting contract, and prints where it wrote it. Nothing is sent.
 
 [script/VerifyVote.s.sol](script/VerifyVote.s.sol) checks a posted vote, `<VOTE_ID>` being the number in its DAO dashboard URL, `primary-<VOTE_ID>`: it rebuilds the proposal from this code at the vote's snapshot block and compares it with the vote on the chain, the script, the metadata and the Vault Safe as the creator. Read-only.
+
+The bytes carry four balances read when they were built: the mint, the primary Agent's API3, the secondary Agent's USDC and its ETH. One wei of API3 burned, or of USDC or ETH sent to the secondary Agent, between the build and the posting changes what the code builds at the snapshot block and fails the check above, although the vote is still exactly what the code built. The second form takes the block the bytes were built at, `block` in the `proposal/generated/amounts.json` that `CreateVote.s.sol` wrote, rebuilds the proposal there, and prints which of the four amounts moved between the build and the posting and by how much. Read-only as well.
