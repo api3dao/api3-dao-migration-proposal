@@ -20,13 +20,9 @@ abstract contract MigrationProposalBase is Test, MigrationScript {
     uint256 mintAmount;
     uint256 agentApi3;
     uint256 secondaryUsdc;
-    uint256 secondaryPnk;
-    uint256 secondaryWpokt;
     uint256 secondaryEth;
     uint256 treasuryApi3Before;
     uint256 agentSafeUsdcBefore;
-    uint256 agentSafePnkBefore;
-    uint256 agentSafeWpoktBefore;
     uint256 agentSafeEthBefore;
 
     function setUp() public {
@@ -75,13 +71,9 @@ abstract contract MigrationProposalBase is Test, MigrationScript {
         mintAmount = amounts.mint;
         agentApi3 = amounts.agentApi3;
         secondaryUsdc = amounts.secondaryUsdc;
-        secondaryPnk = amounts.secondaryPnk;
-        secondaryWpokt = amounts.secondaryWpokt;
         secondaryEth = amounts.secondaryEth;
         treasuryApi3Before = API3.balanceOf(TREASURY_SAFE);
         agentSafeUsdcBefore = USDC.balanceOf(AGENT_SAFE);
-        agentSafePnkBefore = PNK.balanceOf(AGENT_SAFE);
-        agentSafeWpoktBefore = WPOKT.balanceOf(AGENT_SAFE);
         agentSafeEthBefore = AGENT_SAFE.balance;
 
         voteId = _createAndPass(buildScript(amounts), buildMetadata("API3 DAO migration", "Fork rehearsal"));
@@ -142,12 +134,8 @@ abstract contract MigrationProposalBase is Test, MigrationScript {
         assertFalse(API3.getMinterStatus(address(AGENT)), "agent cannot mint");
         assertEq(API3.balanceOf(address(AGENT)), 0, "primary agent emptied");
         assertEq(USDC.balanceOf(address(AGENT_SECONDARY)), 0, "secondary agent USDC emptied");
-        assertEq(PNK.balanceOf(address(AGENT_SECONDARY)), 0, "secondary agent PNK emptied");
-        assertEq(WPOKT.balanceOf(address(AGENT_SECONDARY)), 0, "secondary agent wPOKT emptied");
         assertEq(address(AGENT_SECONDARY).balance, 0, "secondary agent ETH emptied");
         assertEq(USDC.balanceOf(AGENT_SAFE), agentSafeUsdcBefore + secondaryUsdc, "agent multisig received USDC");
-        assertEq(PNK.balanceOf(AGENT_SAFE), agentSafePnkBefore + secondaryPnk, "agent multisig received PNK");
-        assertEq(WPOKT.balanceOf(AGENT_SAFE), agentSafeWpoktBefore + secondaryWpokt, "agent multisig received wPOKT");
         assertEq(AGENT_SAFE.balance, agentSafeEthBefore + secondaryEth, "agent multisig received ETH");
     }
 }

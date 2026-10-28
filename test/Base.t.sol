@@ -20,8 +20,6 @@ abstract contract Base_Test is Test, MigrationScript {
     Amounts amounts;
     uint256 treasuryApi3Before;
     uint256 agentSafeUsdcBefore;
-    uint256 agentSafePnkBefore;
-    uint256 agentSafeWpoktBefore;
     uint256 agentSafeEthBefore;
 
     function setUp() public virtual {
@@ -36,8 +34,6 @@ abstract contract Base_Test is Test, MigrationScript {
 
         treasuryApi3Before = API3.balanceOf(TREASURY_SAFE);
         agentSafeUsdcBefore = USDC.balanceOf(AGENT_SAFE);
-        agentSafePnkBefore = PNK.balanceOf(AGENT_SAFE);
-        agentSafeWpoktBefore = WPOKT.balanceOf(AGENT_SAFE);
         agentSafeEthBefore = AGENT_SAFE.balance;
 
         vm.prank(_proposer());
@@ -130,15 +126,9 @@ abstract contract Base_Test is Test, MigrationScript {
         assertFalse(API3.getMinterStatus(address(AGENT)), "agent cannot mint");
         assertEq(API3.balanceOf(address(AGENT)), 0, "primary agent emptied");
         assertEq(USDC.balanceOf(address(AGENT_SECONDARY)), 0, "secondary agent USDC emptied");
-        assertEq(PNK.balanceOf(address(AGENT_SECONDARY)), 0, "secondary agent PNK emptied");
-        assertEq(WPOKT.balanceOf(address(AGENT_SECONDARY)), 0, "secondary agent wPOKT emptied");
         assertEq(address(AGENT_SECONDARY).balance, 0, "secondary agent ETH emptied");
         assertEq(
             USDC.balanceOf(AGENT_SAFE), agentSafeUsdcBefore + amounts.secondaryUsdc, "agent multisig received USDC"
-        );
-        assertEq(PNK.balanceOf(AGENT_SAFE), agentSafePnkBefore + amounts.secondaryPnk, "agent multisig received PNK");
-        assertEq(
-            WPOKT.balanceOf(AGENT_SAFE), agentSafeWpoktBefore + amounts.secondaryWpokt, "agent multisig received wPOKT"
         );
         assertEq(AGENT_SAFE.balance, agentSafeEthBefore + amounts.secondaryEth, "agent multisig received ETH");
     }

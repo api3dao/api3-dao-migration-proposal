@@ -26,8 +26,6 @@ contract CreateVote is Script, MigrationScript {
         vm.serializeUint(json, "mint", amounts.mint);
         vm.serializeUint(json, "agentApi3", amounts.agentApi3);
         vm.serializeUint(json, "secondaryUsdc", amounts.secondaryUsdc);
-        vm.serializeUint(json, "secondaryPnk", amounts.secondaryPnk);
-        vm.serializeUint(json, "secondaryWpokt", amounts.secondaryWpokt);
         vm.writeJson(vm.serializeUint(json, "secondaryEth", amounts.secondaryEth), "proposal/generated/amounts.json");
 
         console.log("block                     ", block.number);

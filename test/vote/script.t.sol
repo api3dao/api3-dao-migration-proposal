@@ -7,11 +7,11 @@ import {IAgent} from "../../src/Interfaces.sol";
 /// The bytes themselves, before anything is executed.
 contract Vote_Script_Test is Base_Test {
     bytes4 constant CALLS_SCRIPT_SPEC_ID = 0x00000001;
-    uint256 constant CALLS = 28;
+    uint256 constant CALLS = 26;
     bytes1 constant DELIMITER = 0x1f;
 
-    function test_ShouldStartWithTheCallsScriptSpecIdAndHold28Calls() external view {
-        // it should start with the CallsScript spec id and hold 28 calls.
+    function test_ShouldStartWithTheCallsScriptSpecIdAndHold26Calls() external view {
+        // it should start with the CallsScript spec id and hold 26 calls.
         assertEq(bytes4(script), CALLS_SCRIPT_SPEC_ID, "spec id");
         (address[] memory targets,) = this.parse(script);
         assertEq(targets.length, CALLS, "number of calls");
