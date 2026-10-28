@@ -37,7 +37,7 @@ abstract contract Base_Test is Test, MigrationScript {
         agentSafeEthBefore = AGENT_SAFE.balance;
 
         vm.prank(_proposer());
-        voteId = VOTING.newVote(script, metadata, CAST_VOTE, EXECUTES_IF_DECIDED);
+        voteId = VOTING.newVote(script, metadata, true, false);
         _pass(voteId);
     }
 

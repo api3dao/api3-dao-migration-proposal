@@ -27,7 +27,7 @@ forge script script/VerifyVote.s.sol --sig "run(uint256,uint256)" <VOTE_ID> <BUI
 # Run them on a posted vote's bytes, <BLOCK> is its snapshot block, or <BUILD_BLOCK> when the check above needed it
 FOUNDRY_FORK_BLOCK_NUMBER=<BLOCK> ./test.sh
 
-# Generate the proposal for posting, the Vault Safe's newVote call is proposal/generated/calldata.txt
+# Generate the proposal calldata for posting
 forge script script/CreateVote.s.sol
 
 # Print a vote script as a table
@@ -95,7 +95,7 @@ The tests follow the branching tree technique: each `.tree` file spells out what
 
 ## Creating and verifying the proposal
 
-[script/CreateVote.s.sol](script/CreateVote.s.sol) generates the proposal from the chain state at the current block and prints where it wrote it. `proposal/generated/calldata.txt` is the call the Vault Safe submits to the primary voting app, `newVote(bytes,string,bool,bool)` with the script, the metadata, `castVote = true` and `executesIfDecided = false`: the Vault votes yea at creation without executing the proposal in that call. Nothing is sent.
+[script/CreateVote.s.sol](script/CreateVote.s.sol) generates the proposal calldata from the chain state at the current block, ready to be submitted by the Vault Safe to the Aragon voting contract, and prints where it wrote it. Nothing is sent.
 
 Monetary amounts in `proposal/generated/amounts.json` are decimal strings to preserve every base unit in JavaScript. The block remains a JSON number.
 

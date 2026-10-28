@@ -50,11 +50,6 @@ abstract contract MigrationScript {
     string constant METADATA_DELIMITER = "\x1f";
     string constant METADATA_VERSION = "3";
 
-    /// The flags of the Vault's `newVote` call, which the fork tests post with too: the Vault votes yea when it posts,
-    /// without executing the proposal in the creation call.
-    bool constant CAST_VOTE = true;
-    bool constant EXECUTES_IF_DECIDED = false;
-
     /// What the script moves, read from the chain when the vote is built.
     struct Amounts {
         /// Minted into the Treasury Safe, 200,000,000 API3 minus the total supply at that block.
