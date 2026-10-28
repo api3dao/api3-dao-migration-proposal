@@ -36,9 +36,9 @@ abstract contract Base_Test is Test, MigrationScript {
         agentSafeUsdcBefore = USDC.balanceOf(AGENT_SAFE);
         agentSafeEthBefore = AGENT_SAFE.balance;
 
-        // Posted the way the Vault Safe posts it, `CreateVote.s.sol`'s calldata: no vote cast at creation.
+        // Posts with `CreateVote.s.sol`'s flags: vote yea at creation without executing in the same call.
         vm.prank(_proposer());
-        voteId = VOTING.newVote(script, metadata, false, false);
+        voteId = VOTING.newVote(script, metadata, true, false);
         _pass(voteId);
     }
 
