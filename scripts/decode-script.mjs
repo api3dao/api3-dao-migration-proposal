@@ -4,8 +4,9 @@
 //   node scripts/decode-script.mjs proposal/generated/script.hex
 //
 // The script is split into (target, calldata) entries, a call the primary Agent forwards through `execute` is unwrapped,
-// and the calldata is decoded against the signatures the migration vote can contain. Anything else is printed raw, so an
-// unexpected call stands out. The names next to the addresses are labels this file assigns for readability (NAMES
+// and the calldata is decoded against the signatures the migration vote can contain, plus the ERC-20 transfer an Agent
+// makes through `execute`, as secondary votes 133 and 134 do. Anything else is printed raw, so an unexpected call
+// stands out. The names next to the addresses are labels this file assigns for readability (NAMES
 // below), the addresses are what the script holds, and the output says so. A reading aid. VerifyVote.s.sol compares a
 // posted script byte for byte with the source build. The fork tests exercise the source-built script.
 // Needs `cast` for the hashes. Read-only, no dependencies.
@@ -45,6 +46,7 @@ const SIGNATURES = [
   'revokePermission(address,address,bytes32)',
   'removePermissionManager(address,bytes32)',
   'transfer(address,address,uint256)',
+  'transfer(address,uint256)',
   'execute(address,uint256,bytes)',
   'updateMinterStatus(address,bool)',
   'mint(address,uint256)',
@@ -104,13 +106,15 @@ const describe = (target, value, data) => {
     return `\`execute\`(${name(innerTarget)}, ${eth(innerValue)}, ${innerCall})`;
   }
   const args = [];
-  let token;
-  typeList.split(',').forEach((kind, i) => {
+  const kinds = typeList.split(',');
+  // An Agent's transfer(token, to, value) names the token, an ERC-20 transfer(to, value) is a call on the token
+  let token = NAMES[target.toLowerCase()];
+  kinds.forEach((kind, i) => {
     const w = word(body, i);
     if (kind === 'address') {
       const address = `0x${w.slice(24)}`;
       args.push(name(address));
-      if (i === 0 && fname === 'transfer') token = NAMES[address];
+      if (i === 0 && fname === 'transfer' && kinds.length === 3) token = NAMES[address];
     } else if (kind === 'bytes32') {
       args.push(ROLE_NAMES[`0x${w}`] ?? `0x${w}`);
     } else if (kind === 'bool') {
