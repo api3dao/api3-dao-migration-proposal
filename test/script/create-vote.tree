@@ -1,0 +1,2 @@
+Create_Vote_Test
+└── it should preserve every generated amount as a decimal string.

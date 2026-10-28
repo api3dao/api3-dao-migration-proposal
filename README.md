@@ -38,7 +38,7 @@ node scripts/update-readme.mjs <block>
 
 ## What the vote does
 
-One primary vote whose script makes the 26 calls below, in this order. Calls to the ACL and the primary Agent come from the primary voting app, everything else goes through the primary Agent's `execute`. The amounts are the balances at the block the script was built at, the posted vote fixes them at its posting block. The calls are the ones the proposal text lists. The secondary Agent's PNK and wPOKT are not among them: secondary votes 133 and 134, posted on 2026-10-27, move them to the agent multisig, so the primary vote does not depend on those two token contracts.
+One primary vote whose script makes the 26 calls below, in this order. Calls to the ACL and the primary Agent come from the primary voting app, everything else goes through the primary Agent's `execute`. The amounts are fixed at the block the script was built at and are unchanged when the vote is posted. The calls are the ones the proposal text lists. The secondary Agent's PNK and wPOKT are not among them: secondary votes 133 and 134, posted on 2026-10-27, move them to the agent multisig, so the primary vote does not depend on those two token contracts.
 
 <!-- script-table -->
 
@@ -51,7 +51,7 @@ Built at block 26287968, 26 calls, 4316 bytes.
 | 3 | via primary Agent | secondary Agent `0x556ecbb0311d350491ba0ec7e019c354d7723ce0` | `transfer`(USDC `0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48`, agent multisig `0xbbe0de9757f93e3306adbfebe906ab285edd13da`, 59419713966 (59,419.713966 USDC)) |
 | 4 | via primary Agent | secondary Agent `0x556ecbb0311d350491ba0ec7e019c354d7723ce0` | `execute`(agent multisig `0xbbe0de9757f93e3306adbfebe906ab285edd13da`, 57118793443618210 wei (0.057118 ETH), no calldata) |
 | 5 | voting app | primary Agent `0xd9f80bdb37e6bad114d747e60ce6d2aaf26704ae` | `transfer`(API3 token `0x0b38210ea11411557c13457d4da7dc6ea731b88a`, Treasury Safe `0xb7fa2cb302c5dc127e61f27b92bec411cbf0ae4a`, 6083873527701856751553400 (6,083,873.527701 API3 token)) |
-| 6 | via primary Agent | API3 token `0x0b38210ea11411557c13457d4da7dc6ea731b88a` | `updateMinterStatus`(Api3Pool `0x6dd655f10d4b9e242ae186d9050b68f725c76d76`, false) |
+| 6 | via primary Agent | API3 token `0x0b38210ea11411557c13457d4da7dc6ea731b88a` | `updateMinterStatus`(API3 pool `0x6dd655f10d4b9e242ae186d9050b68f725c76d76`, false) |
 | 7 | via primary Agent | API3 token `0x0b38210ea11411557c13457d4da7dc6ea731b88a` | `updateMinterStatus`(primary Agent `0xd9f80bdb37e6bad114d747e60ce6d2aaf26704ae`, true) |
 | 8 | via primary Agent | API3 token `0x0b38210ea11411557c13457d4da7dc6ea731b88a` | `mint`(Treasury Safe `0xb7fa2cb302c5dc127e61f27b92bec411cbf0ae4a`, 10876876674326757910422715 (10,876,876.674326 API3 token)) |
 | 9 | via primary Agent | API3 token `0x0b38210ea11411557c13457d4da7dc6ea731b88a` | `updateMinterStatus`(primary Agent `0xd9f80bdb37e6bad114d747e60ce6d2aaf26704ae`, false) |
@@ -83,15 +83,18 @@ The tests follow the branching tree technique: each `.tree` file spells out what
 
 | tree                                       | what it checks                                                                                                                                      |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [test/vote/script.tree](test/vote/script.tree)     | the bytes: the script's shape and its 26 calls, every call on the ACL or the primary Agent, the metadata from the proposal files, a deployed Treasury Safe |
+| [test/vote/script.tree](test/vote/script.tree)     | the script's shape and count of 26 calls, calls routed to the ACL or the primary Agent, the metadata from the proposal files, a deployed Treasury Safe |
 | [test/vote/execute.tree](test/vote/execute.tree)   | the outcome on both paths: supply exactly 200,000,000, the minter set final, the primary Agent's API3 and the secondary Agent's USDC and ETH in the multisigs, the Treasury Safe credited, the overshoot burned on the late path, a burn before execution left as it is |
 | [test/dao/aragon.tree](test/dao/aragon.tree)       | the legacy voting apps after the migration: no new vote can be created, support and quorum at the maximum, the root permissions gone, even for the primary voting app itself |
 | [test/pool/rewards.tree](test/pool/rewards.tree)   | `mintReward()` mints nothing after the migration, the total stake holds and the epoch cursor keeps advancing                                           |
-| [test/pool/staking.tree](test/pool/staking.tree)   | stakers keep every right but voting: a full exit, locked rewards unlocking over 52 epochs, a new staker's round trip, a partial exit and re-entry over a year |
+| [test/pool/staking.tree](test/pool/staking.tree)   | staking and exits without new rewards: a full exit, locked rewards unlocking over 52 epochs, a new staker's round trip, a partial exit and re-entry over a year |
+| [test/script/create-vote.tree](test/script/create-vote.tree) | generated monetary amounts remain exact decimal strings, including ETH above JavaScript's safe integer limit |
 
 ## Creating and verifying the proposal
 
 [script/CreateVote.s.sol](script/CreateVote.s.sol) generates the proposal calldata from the chain state at the current block, ready to be submitted by the Vault Safe to the Aragon voting contract, and prints where it wrote it. Nothing is sent.
+
+Monetary amounts in `proposal/generated/amounts.json` are decimal strings to preserve every base unit in JavaScript. The block remains a JSON number.
 
 [script/VerifyVote.s.sol](script/VerifyVote.s.sol) checks a posted vote, `<VOTE_ID>` being the number in its DAO dashboard URL, `primary-<VOTE_ID>`: it rebuilds the proposal from this code at the vote's snapshot block and compares it with the vote on the chain, the script, the metadata and the Vault Safe as the creator. Read-only.
 

@@ -6,14 +6,15 @@
 // The script is split into (target, calldata) entries, a call the primary Agent forwards through `execute` is unwrapped,
 // and the calldata is decoded against the signatures the migration vote can contain. Anything else is printed raw, so an
 // unexpected call stands out. The names next to the addresses are labels this file assigns for readability (NAMES
-// below), the addresses are what the script holds, and the output says so. A reading aid, the byte for byte
-// comparisons are the forge tests. Needs `cast` for the hashes. Read-only, no dependencies.
+// below), the addresses are what the script holds, and the output says so. A reading aid. VerifyVote.s.sol compares a
+// posted script byte for byte with the source build. The fork tests exercise the source-built script.
+// Needs `cast` for the hashes. Read-only, no dependencies.
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 const NAMES = {
   '0x0b38210ea11411557c13457d4da7dc6ea731b88a': 'API3 token',
-  '0x6dd655f10d4b9e242ae186d9050b68f725c76d76': 'Api3Pool',
+  '0x6dd655f10d4b9e242ae186d9050b68f725c76d76': 'API3 pool',
   '0xdb6c812e439ce5c740570578681ea7aadba5170b': 'primary voting app',
   '0x1c8058e72e4902b3431ef057e8d9a58a73f26372': 'secondary voting app',
   '0xd9f80bdb37e6bad114d747e60ce6d2aaf26704ae': 'primary Agent',

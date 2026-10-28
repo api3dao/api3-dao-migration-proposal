@@ -21,12 +21,7 @@ contract CreateVote is Script, MigrationScript {
         vm.writeFile("proposal/generated/script.hex", vm.toString(script_));
         vm.writeFile("proposal/generated/script-hash.txt", vm.toString(keccak256(script_)));
         vm.writeFile("proposal/generated/metadata.txt", metadata);
-        string memory json = "amounts";
-        vm.serializeUint(json, "block", block.number);
-        vm.serializeUint(json, "mint", amounts.mint);
-        vm.serializeUint(json, "agentApi3", amounts.agentApi3);
-        vm.serializeUint(json, "secondaryUsdc", amounts.secondaryUsdc);
-        vm.writeJson(vm.serializeUint(json, "secondaryEth", amounts.secondaryEth), "proposal/generated/amounts.json");
+        vm.writeJson(_amountsJson(amounts), "proposal/generated/amounts.json");
 
         console.log("block                     ", block.number);
         console.log("script bytes              ", script_.length);
@@ -35,5 +30,15 @@ contract CreateVote is Script, MigrationScript {
         console.log("agent treasury (API3)     ", amounts.agentApi3 / 1e18);
         console.log("secondary agent USDC      ", amounts.secondaryUsdc / 1e6);
         console.log("written to proposal/generated/: script.hex, metadata.txt, script-hash.txt, amounts.json");
+    }
+
+    function _amountsJson(Amounts memory amounts) internal returns (string memory) {
+        string memory json = "amounts";
+        vm.serializeUint(json, "block", block.number);
+        // Decimal strings preserve every base unit when the JSON is read by JavaScript.
+        vm.serializeString(json, "mint", vm.toString(amounts.mint));
+        vm.serializeString(json, "agentApi3", vm.toString(amounts.agentApi3));
+        vm.serializeString(json, "secondaryUsdc", vm.toString(amounts.secondaryUsdc));
+        return vm.serializeString(json, "secondaryEth", vm.toString(amounts.secondaryEth));
     }
 }
