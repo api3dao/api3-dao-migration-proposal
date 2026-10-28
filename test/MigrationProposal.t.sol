@@ -429,7 +429,8 @@ contract MigrationProposalTest is MigrationProposalBase {
 }
 
 /// The fallback path: the pool mints one more epoch before the decided vote is executed, so the
-/// supply overshoots by that reward and the Treasury Safe burns the surplus afterwards.
+/// supply overshoots by that reward and one of the DAO's Safes burns the surplus afterwards, here the Treasury Safe
+/// where the mint landed.
 contract MigrationProposalLateExecutionTest is MigrationProposalBase {
     uint256 overshoot;
 
@@ -450,7 +451,7 @@ contract MigrationProposalLateExecutionTest is MigrationProposalBase {
         assertEq(
             API3.balanceOf(TREASURY_SAFE),
             treasuryApi3Before + mintAmount + agentApi3 - overshoot,
-            "the Treasury Safe paid the burn"
+            "the burn came out of the Treasury Safe, where the mint landed"
         );
         console.log("overshoot burned (API3)", overshoot / 1e18);
     }
