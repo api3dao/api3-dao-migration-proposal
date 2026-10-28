@@ -1,47 +1,62 @@
 # API3 DAO migration proposal
 
-Everything behind the primary vote that moves API3 governance from the legacy DAO to Snapshot: the vote script, Foundry fork tests that run it through the real Aragon apps and check that the staking pool keeps working afterwards, and a decoder that prints the script as a table. Everything runs against a fork, nothing here broadcasts a transaction to mainnet.
+This repository builds the primary vote that moves API3 governance from the legacy DAO to Snapshot. It holds the vote script, Foundry fork tests that run the script through the real Aragon apps and check that the staking pool keeps working afterwards, and a decoder that prints the script as a table. Everything runs against a fork. Nothing here broadcasts a transaction to mainnet.
 
-## Prerequisites
+## Verify the proposal
 
-[Foundry](https://getfoundry.sh), [bulloak](https://github.com/alexfertel/bulloak) and Node, then:
+Check that the posted vote is exactly the proposal this code builds. Every step is read-only.
+
+1. Install [Foundry](https://getfoundry.sh), [bulloak](https://github.com/alexfertel/bulloak), and Node.
+2. Fetch the pinned `forge-std`:
+
+	```bash
+	./setup.sh
+	```
+
+3. Find the vote ID. It is the number in the vote's DAO dashboard URL, `primary-<VOTE_ID>`.
+4. Run the check:
+
+	```bash
+	forge script script/VerifyVote.s.sol --sig "run(uint256)" <VOTE_ID>
+	```
+
+	[script/VerifyVote.s.sol](script/VerifyVote.s.sol) rebuilds the proposal from this code at the vote's snapshot block. It compares the result with the vote on the chain: the script, the metadata, and the Vault Safe as the creator. The output names the snapshot block and ends with `VERIFIED` when everything matches.
+
+5. Optional: run the fork tests on the posted vote's bytes, with `<BLOCK>` set to the snapshot block from step 4:
+
+	```bash
+	FOUNDRY_FORK_BLOCK_NUMBER=<BLOCK> ./test.sh
+	```
+
+You do not need to configure an RPC. `foundry.toml` holds a rate-limited mainnet archive endpoint that everyone who runs this shares. To use your own, pass `--rpc-url <url>` to any `forge` or `cast` command, or set `FOUNDRY_ETH_RPC_URL` for a whole session.
+
+### If a balance moved between the build and the posting
+
+The bytes carry four balances read when they were built: the mint, the primary Agent's API3, the secondary Agent's USDC, and the secondary Agent's ETH. One wei of API3 burned, or of USDC or ETH sent to the secondary Agent, between the build and the posting changes what the code builds at the snapshot block. The check in step 4 then fails, although the vote is still exactly what the code built.
+
+In that case, pass the block the bytes were built at. `<BUILD_BLOCK>` is `block` in the `proposal/generated/amounts.json` that `CreateVote.s.sol` wrote:
 
 ```bash
-./setup.sh
-```
-
-The RPC is a rate limited mainnet archive endpoint in `foundry.toml`, shared by everyone who runs this, so nothing has to be configured. `--rpc-url <url>` on any forge or cast command, or `FOUNDRY_ETH_RPC_URL` for a whole session, overrides it.
-
-## Running
-
-```bash
-# Check that a posted vote (e.g. "primary-17" in the DAO dashboard) is the proposal this code builds
-forge script script/VerifyVote.s.sol --sig "run(uint256)" <VOTE_ID>
-
-# The same when a balance moved between the build and the posting, <BUILD_BLOCK> is "block" in proposal/generated/amounts.json
 forge script script/VerifyVote.s.sol --sig "run(uint256,uint256)" <VOTE_ID> <BUILD_BLOCK>
-
-# Run the fork tests
-./test.sh
-
-# Run them on a posted vote's bytes, <BLOCK> is its snapshot block, or <BUILD_BLOCK> when the check above needed it
-FOUNDRY_FORK_BLOCK_NUMBER=<BLOCK> ./test.sh
-
-# Generate the proposal calldata for posting
-forge script script/CreateVote.s.sol
-
-# Print a vote script as a table
-node scripts/decode-script.mjs <script.hex or 0x bytes>
-
-# Rebuild the table below from the code at a block
-node scripts/update-readme.mjs <block>
 ```
 
-`test.sh` checks that every `.tree` matches its test file and runs the fork suite on the proposal the code builds at the latest block. Arguments go to `forge test`. [CI](.github/workflows/ci.yml) runs it and the table check on every pull request and push to `main`.
+This form rebuilds the proposal at `<BUILD_BLOCK>` and prints which of the four amounts moved between the build and the posting, and by how much. It is read-only as well. To run the fork tests on the posted bytes, use `<BUILD_BLOCK>` as `<BLOCK>` in step 5.
+
+### Read the script yourself
+
+To print any vote script as a table, run:
+
+```bash
+node scripts/decode-script.mjs <script.hex or 0x bytes>
+```
+
+The next section is that table for the proposal this code builds.
 
 ## What the vote does
 
-One primary vote whose script makes the 26 calls below, in this order. Calls to the ACL and the primary Agent come from the primary voting app, everything else goes through the primary Agent's `execute`. The amounts are fixed at the block the script was built at and are unchanged when the vote is posted. The calls are the ones the proposal text lists. The secondary Agent's PNK and wPOKT are not among them: secondary votes 133 and 134, posted on 2026-10-27, move them to the agent multisig, so the primary vote does not depend on those two token contracts.
+One primary vote whose script makes the 26 calls below, in this order. Calls to the ACL and the primary Agent come from the primary voting app. Every other call goes through the primary Agent's `execute`. The amounts are fixed at the block the script was built at and are unchanged when the vote is posted. The calls are the ones the proposal text lists.
+
+The secondary Agent's PNK and wPOKT are not among them. Secondary votes 133 and 134, posted on 2026-10-27, move them to the agent multisig, so the primary vote does not depend on those two token contracts.
 
 <!-- script-table -->
 
@@ -82,7 +97,7 @@ The names next to the addresses are labels this decoder assigns for readability,
 
 ## What the tests assert
 
-The tests follow the branching tree technique: each `.tree` file spells out what is checked, as conditions and the outcomes under them, and the `.t.sol` next to it has one test per branch, named after it. The vote is passed by real voting power, the holders in `test/data/voters.json`.
+The tests follow the branching tree technique. Each `.tree` file spells out what is checked, as conditions and the outcomes under them. The `.t.sol` next to it has one test per branch, named after it. Real voting power passes the vote: the holders in `test/data/voters.json`.
 
 | tree                                       | what it checks                                                                                                                                      |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -93,12 +108,28 @@ The tests follow the branching tree technique: each `.tree` file spells out what
 | [test/pool/staking.tree](test/pool/staking.tree)   | staking and exits without new rewards: a full exit, locked rewards unlocking over 52 epochs, a new staker's round trip, a partial exit and re-entry over a year |
 | [test/script/create-vote.tree](test/script/create-vote.tree) | generated monetary amounts remain exact decimal strings, including ETH above JavaScript's safe integer limit |
 
-## Creating and verifying the proposal
+## Build and test the proposal
 
-[script/CreateVote.s.sol](script/CreateVote.s.sol) generates the proposal calldata from the chain state at the current block, ready to be submitted by the Vault Safe to the Aragon voting contract, and prints where it wrote it. Nothing is sent.
+Run the fork tests on the proposal the code builds at the latest block:
 
-Monetary amounts in `proposal/generated/amounts.json` are decimal strings to preserve every base unit in JavaScript. The block remains a JSON number.
+```bash
+./test.sh
+```
 
-[script/VerifyVote.s.sol](script/VerifyVote.s.sol) checks a posted vote, `<VOTE_ID>` being the number in its DAO dashboard URL, `primary-<VOTE_ID>`: it rebuilds the proposal from this code at the vote's snapshot block and compares it with the vote on the chain, the script, the metadata and the Vault Safe as the creator. Read-only.
+`test.sh` checks that every `.tree` matches its test file, then runs the fork suite. Arguments go to `forge test`. [CI](.github/workflows/ci.yml) runs `test.sh` and the table check on every pull request and every push to `main`.
 
-The bytes carry four balances read when they were built: the mint, the primary Agent's API3, the secondary Agent's USDC and its ETH. One wei of API3 burned, or of USDC or ETH sent to the secondary Agent, between the build and the posting changes what the code builds at the snapshot block and fails the check above, although the vote is still exactly what the code built. The second form takes the block the bytes were built at, `block` in the `proposal/generated/amounts.json` that `CreateVote.s.sol` wrote, rebuilds the proposal there, and prints which of the four amounts moved between the build and the posting and by how much. Read-only as well.
+Generate the proposal calldata for posting:
+
+```bash
+forge script script/CreateVote.s.sol
+```
+
+[script/CreateVote.s.sol](script/CreateVote.s.sol) generates the calldata from the chain state at the current block and prints where it wrote it. The Vault Safe submits that calldata to the Aragon voting contract. The script sends nothing.
+
+Monetary amounts in `proposal/generated/amounts.json` are decimal strings, to preserve every base unit in JavaScript. The block remains a JSON number.
+
+Rebuild the table in [What the vote does](#what-the-vote-does) from the code at a block:
+
+```bash
+node scripts/update-readme.mjs <block>
+```
