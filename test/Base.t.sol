@@ -103,7 +103,7 @@ abstract contract Base_Test is Test, MigrationScript {
 
     /// The fallback path: the pool mints one more epoch first, the supply overshoots by that reward and one of the
     /// DAO's Safes burns the surplus afterwards. Which one is not fixed here. The Treasury Safe stands in, since the
-    /// mint landed there, and opts in as a burner when it is not one.
+    /// mint landed there, opts in as a burner and opts out again after burning.
     function executeAfterOneMoreEpoch() internal returns (uint256 overshoot, uint256 reward) {
         _nextEpoch();
         uint256 supply = API3.totalSupply();
@@ -112,8 +112,9 @@ abstract contract Base_Test is Test, MigrationScript {
         VOTING.executeVote(voteId);
         overshoot = API3.totalSupply() - TARGET_SUPPLY;
         vm.startPrank(TREASURY_SAFE);
-        if (!API3.getBurnerStatus(TREASURY_SAFE)) API3.updateBurnerStatus(true);
+        API3.updateBurnerStatus(true);
         API3.burn(overshoot);
+        API3.updateBurnerStatus(false);
         vm.stopPrank();
         _nextBlock();
     }

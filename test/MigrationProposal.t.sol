@@ -443,11 +443,13 @@ contract MigrationProposalLateExecutionTest is MigrationProposalBase {
         vm.startPrank(TREASURY_SAFE);
         API3.updateBurnerStatus(true);
         API3.burn(overshoot);
+        API3.updateBurnerStatus(false);
         vm.stopPrank();
     }
 
     function test_01_overshoot_is_burned_and_supply_is_exactly_200M() public view {
         _assertOutcome();
+        assertFalse(API3.getBurnerStatus(TREASURY_SAFE), "the Treasury Safe opted out after burning");
         assertEq(
             API3.balanceOf(TREASURY_SAFE),
             treasuryApi3Before + mintAmount + agentApi3 - overshoot,

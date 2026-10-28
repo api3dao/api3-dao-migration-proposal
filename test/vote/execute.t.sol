@@ -27,6 +27,7 @@ contract Vote_Execute_Test is Base_Test {
     function test_WhenOneMoreRewardEpochIsMintedBeforeTheVoteExecutes() external {
         // it should overshoot the target by that epoch's reward.
         // it should land on exactly 200,000,000 API3 once the overshoot is burned.
+        // it should leave the Treasury Safe without burner status.
         uint256 supplyBefore = API3.totalSupply();
         (uint256 overshoot, uint256 reward) = executeAfterOneMoreEpoch();
         assertGt(reward, 0, "one more epoch was minted while the vote was open");
@@ -35,6 +36,7 @@ contract Vote_Execute_Test is Base_Test {
             overshoot, reward + supplyBefore + amounts.mint - TARGET_SUPPLY, "the overshoot is that epoch's reward"
         );
         _assertOutcome();
+        assertFalse(API3.getBurnerStatus(TREASURY_SAFE), "the Treasury Safe opted out after burning");
         assertEq(
             API3.balanceOf(TREASURY_SAFE),
             treasuryApi3Before + amounts.mint + amounts.agentApi3 - overshoot,
