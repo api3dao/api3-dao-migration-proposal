@@ -24,6 +24,9 @@ forge script script/VerifyVote.s.sol --sig "run(uint256,uint256)" <VOTE_ID> <BUI
 # Run the fork tests
 ./test.sh
 
+# Run them on a posted vote's bytes, <BLOCK> is its snapshot block, or <BUILD_BLOCK> when the check above needed it
+FOUNDRY_FORK_BLOCK_NUMBER=<BLOCK> ./test.sh
+
 # Generate the proposal calldata for posting
 forge script script/CreateVote.s.sol
 

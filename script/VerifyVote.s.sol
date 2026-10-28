@@ -8,8 +8,10 @@ import "../src/MigrationScript.sol";
 /// @notice Checks a posted vote against the source: rebuilds the script at the vote's snapshot block, the way
 /// `CreateVote.s.sol` built it for posting, and the metadata from `proposal/title.txt` and `proposal/description.md`,
 /// then compares both with what the primary voting app holds for the vote and with its StartVote log, which also has
-/// to name the Vault Safe as the creator. The vote is the tested thing when this passes, since the fork tests run on
-/// the script the same source builds. Read-only.
+/// to name the Vault Safe as the creator. When this passes, the vote holds the calls the fork tests run, built by the
+/// same source. The tests read the amounts at their own fork block, so they run the posted bytes only when pinned to
+/// the vote's snapshot block if the first form passes, or to the build block if the second does:
+/// `FOUNDRY_FORK_BLOCK_NUMBER=<BLOCK> ./test.sh`. Read-only.
 ///
 ///   forge script script/VerifyVote.s.sol --sig "run(uint256)" <VOTE_ID>
 ///   forge script script/VerifyVote.s.sol --sig "run(uint256,uint256)" <VOTE_ID> <BUILD_BLOCK>
