@@ -149,7 +149,7 @@ abstract contract MigrationScript {
         );
         // Call 8: mint(Treasury Safe, amount), the amount fixed when the script is built as 200,000,000
         // minus the total supply at that block. The Treasury Safe for the reason given at call 5. If the pool mints once
-        // more before execution, the Treasury Safe burns the excess afterwards.
+        // more before execution, the DAO burns the excess afterwards from one of its Safes.
         script = bytes.concat(
             script, _viaAgent(address(API3), abi.encodeCall(IApi3Token.mint, (TREASURY_SAFE, amounts.mint)))
         );

@@ -7,6 +7,6 @@ Vote_Execute_Test
 │   └── it should credit the Treasury Safe with the mint and the primary Agent's API3.
 ├── when one more reward epoch is minted before the vote executes
 │   ├── it should overshoot the target by that epoch's reward.
-│   └── it should land on exactly 200,000,000 API3 once the Treasury Safe burns the overshoot.
+│   └── it should land on exactly 200,000,000 API3 once the overshoot is burned.
 └── when a holder burns API3 before the vote executes
     └── it should land below the target by the burned amount with no minter left to make it up.

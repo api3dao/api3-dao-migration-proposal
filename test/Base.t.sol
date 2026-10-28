@@ -101,9 +101,9 @@ abstract contract Base_Test is Test, MigrationScript {
         _nextBlock();
     }
 
-    /// The fallback path: the pool mints one more epoch first, the supply overshoots by that reward and the
-    /// Treasury Safe, where the mint landed, burns the surplus afterwards. The burner opt-in is a one-time call the
-    /// Treasury Safe makes before the vote opens, here it is made when missing.
+    /// The fallback path: the pool mints one more epoch first, the supply overshoots by that reward and one of the
+    /// DAO's Safes burns the surplus afterwards. Which one is not fixed here. The Treasury Safe stands in, since the
+    /// mint landed there, and opts in as a burner when it is not one.
     function executeAfterOneMoreEpoch() internal returns (uint256 overshoot, uint256 reward) {
         _nextEpoch();
         uint256 supply = API3.totalSupply();
