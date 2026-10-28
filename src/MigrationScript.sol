@@ -30,8 +30,6 @@ abstract contract MigrationScript {
     address constant DEAD = 0x000000000000000000000000000000000000dEaD;
     address constant ANY_ENTITY = address(type(uint160).max);
     IERC20 constant USDC = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
-    IERC20 constant PNK = IERC20(0x93ED3FBe21207Ec2E8f2d3c3de6e058Cb73Bc04d);
-    IERC20 constant WPOKT = IERC20(0x67F4C72a50f8Df6487720261E188F2abE83F57D7);
 
     bytes32 constant CREATE_VOTES_ROLE = keccak256("CREATE_VOTES_ROLE");
     bytes32 constant MODIFY_SUPPORT_ROLE = keccak256("MODIFY_SUPPORT_ROLE");
@@ -58,10 +56,10 @@ abstract contract MigrationScript {
         uint256 mint;
         /// The primary Agent's API3, moved to the Treasury Safe.
         uint256 agentApi3;
-        /// The secondary Agent's balances, moved to the agent multisig.
+        /// The secondary Agent's USDC and ETH, moved to the agent multisig. Its PNK and wPOKT are not in this script:
+        /// secondary votes 133 and 134, posted on 2026-10-27, move them to the same multisig, so the primary vote does
+        /// not depend on those two token contracts.
         uint256 secondaryUsdc;
-        uint256 secondaryPnk;
-        uint256 secondaryWpokt;
         uint256 secondaryEth;
     }
 
@@ -73,13 +71,9 @@ abstract contract MigrationScript {
         amounts.mint = TARGET_SUPPLY - supply;
         amounts.agentApi3 = API3.balanceOf(address(AGENT));
         amounts.secondaryUsdc = USDC.balanceOf(address(AGENT_SECONDARY));
-        amounts.secondaryPnk = PNK.balanceOf(address(AGENT_SECONDARY));
-        amounts.secondaryWpokt = WPOKT.balanceOf(address(AGENT_SECONDARY));
         amounts.secondaryEth = address(AGENT_SECONDARY).balance;
         require(amounts.agentApi3 > 0, "MigrationScript: no API3 to move");
         require(amounts.secondaryUsdc > 0, "MigrationScript: no USDC to move");
-        require(amounts.secondaryPnk > 0, "MigrationScript: no PNK to move");
-        require(amounts.secondaryWpokt > 0, "MigrationScript: no wPOKT to move");
         require(amounts.secondaryEth > 0, "MigrationScript: no ETH to move");
     }
 
@@ -88,14 +82,14 @@ abstract contract MigrationScript {
         return string.concat(METADATA_VERSION, METADATA_DELIMITER, title, METADATA_DELIMITER, description);
     }
 
-    /// One CallsScript of 28 calls, in the order the proposal text lists them. `_direct` entries are made by the
+    /// One CallsScript of 26 calls, in the order the proposal text lists them. `_direct` entries are made by the
     /// primary voting app itself, `_viaAgent` entries by the primary Agent through `execute`. The comments give the
     /// reason behind a call where there is one.
     function buildScript(Amounts memory amounts) internal pure returns (bytes memory script) {
         script = abi.encodePacked(uint32(1));
 
         // Calls 1 and 2: the ACL grants the primary Agent TRANSFER_ROLE and EXECUTE_ROLE on the secondary
-        // Agent. EXECUTE_ROLE because the ETH of call 6 cannot leave through the secondary Agent's `transfer`:
+        // Agent. EXECUTE_ROLE because the ETH of call 4 cannot leave through the secondary Agent's `transfer`:
         // Aragon's Vault sends ETH with `send`, and the 2300 gas stipend is not enough for a Safe to receive it
         // (`VAULT_SEND_REVERTED` on the fork, an EOA receives fine). The ETH goes through `execute` instead, which
         // needs EXECUTE_ROLE. The primary voting app manages that role on the secondary Agent as well, so no other
@@ -117,9 +111,10 @@ abstract contract MigrationScript {
             )
         );
 
-        // Calls 3 to 6: the secondary Agent transfers its USDC, PNK, wPOKT and ETH to the agent multisig. The
-        // amounts are read from the chain when the script is built, right before posting. The proposal text quotes
-        // the balances of an earlier day and points here for the posted ones.
+        // Calls 3 and 4: the secondary Agent transfers its USDC and ETH to the agent multisig. The amounts are read
+        // from the chain when the script is built, right before posting. The proposal text quotes the balances of an
+        // earlier day and points here for the posted ones. The secondary Agent's PNK and wPOKT leave through secondary
+        // votes 133 and 134 instead, see `Amounts`.
         // Call 3, USDC
         script = bytes.concat(
             script,
@@ -128,29 +123,13 @@ abstract contract MigrationScript {
                 abi.encodeCall(IAgent.transfer, (address(USDC), AGENT_SAFE, amounts.secondaryUsdc))
             )
         );
-        // Call 4, PNK
-        script = bytes.concat(
-            script,
-            _viaAgent(
-                address(AGENT_SECONDARY),
-                abi.encodeCall(IAgent.transfer, (address(PNK), AGENT_SAFE, amounts.secondaryPnk))
-            )
-        );
-        // Call 5, wPOKT
-        script = bytes.concat(
-            script,
-            _viaAgent(
-                address(AGENT_SECONDARY),
-                abi.encodeCall(IAgent.transfer, (address(WPOKT), AGENT_SAFE, amounts.secondaryWpokt))
-            )
-        );
-        // Call 6, ETH, through `execute` instead of `transfer`, see calls 1 and 2
+        // Call 4, ETH, through `execute` instead of `transfer`, see calls 1 and 2
         script = bytes.concat(
             script,
             _viaAgent(address(AGENT_SECONDARY), abi.encodeCall(IAgent.execute, (AGENT_SAFE, amounts.secondaryEth, "")))
         );
 
-        // Call 7: the primary Agent transfers its API3 to the Treasury Safe. The primary voting app holds
+        // Call 5: the primary Agent transfers its API3 to the Treasury Safe. The primary voting app holds
         // TRANSFER_ROLE on the primary Agent, so this is a plain Agent transfer, not one through `execute`. The
         // Treasury Safe rather than the Vault: the Vault votes on Snapshot with the pool stake delegated to it, so
         // the API3 goes to a Safe that never votes.
@@ -159,38 +138,38 @@ abstract contract MigrationScript {
             _direct(address(AGENT), abi.encodeCall(IAgent.transfer, (address(API3), TREASURY_SAFE, amounts.agentApi3)))
         );
 
-        // Calls 8 to 12: Api3Token calls, made by the primary Agent as the token owner.
-        // Call 8: updateMinterStatus(Api3Pool, false). Rewards stop.
+        // Calls 6 to 10: Api3Token calls, made by the primary Agent as the token owner.
+        // Call 6: updateMinterStatus(Api3Pool, false). Rewards stop.
         script = bytes.concat(
             script, _viaAgent(address(API3), abi.encodeCall(IApi3Token.updateMinterStatus, (address(POOL), false)))
         );
-        // Call 9: updateMinterStatus(primary Agent, true).
+        // Call 7: updateMinterStatus(primary Agent, true).
         script = bytes.concat(
             script, _viaAgent(address(API3), abi.encodeCall(IApi3Token.updateMinterStatus, (address(AGENT), true)))
         );
-        // Call 10: mint(Treasury Safe, amount), the amount fixed when the script is built as 200,000,000
-        // minus the total supply at that block. The Treasury Safe for the reason given at call 7. If the pool mints once
+        // Call 8: mint(Treasury Safe, amount), the amount fixed when the script is built as 200,000,000
+        // minus the total supply at that block. The Treasury Safe for the reason given at call 5. If the pool mints once
         // more before execution, the Treasury Safe burns the excess afterwards.
         script = bytes.concat(
             script, _viaAgent(address(API3), abi.encodeCall(IApi3Token.mint, (TREASURY_SAFE, amounts.mint)))
         );
-        // Call 11: updateMinterStatus(primary Agent, false).
+        // Call 9: updateMinterStatus(primary Agent, false).
         script = bytes.concat(
             script, _viaAgent(address(API3), abi.encodeCall(IApi3Token.updateMinterStatus, (address(AGENT), false)))
         );
-        // Call 12: transferOwnership(dead). `renounceOwnership` reverts by design, so this is the only way to
+        // Call 10: transferOwnership(dead). `renounceOwnership` reverts by design, so this is the only way to
         // make the minter set final.
         script = bytes.concat(script, _viaAgent(address(API3), abi.encodeCall(IApi3Token.transferOwnership, (DEAD))));
 
-        // Calls 13 and 14: the ACL revokes CREATE_VOTES_ROLE from any address on both voting apps.
-        // Call 13, primary voting app
+        // Calls 11 and 12: the ACL revokes CREATE_VOTES_ROLE from any address on both voting apps.
+        // Call 11, primary voting app
         script = bytes.concat(
             script,
             _direct(
                 address(ACL), abi.encodeCall(IACL.revokePermission, (ANY_ENTITY, address(VOTING), CREATE_VOTES_ROLE))
             )
         );
-        // Call 14, secondary voting app
+        // Call 12, secondary voting app
         script = bytes.concat(
             script,
             _direct(
@@ -199,14 +178,14 @@ abstract contract MigrationScript {
             )
         );
 
-        // Calls 15 and 16: the ACL removes the manager of CREATE_VOTES_ROLE on both voting apps, so it
+        // Calls 13 and 14: the ACL removes the manager of CREATE_VOTES_ROLE on both voting apps, so it
         // cannot be granted again.
-        // Call 15, primary voting app
+        // Call 13, primary voting app
         script = bytes.concat(
             script,
             _direct(address(ACL), abi.encodeCall(IACL.removePermissionManager, (address(VOTING), CREATE_VOTES_ROLE)))
         );
-        // Call 16, secondary voting app
+        // Call 14, secondary voting app
         script = bytes.concat(
             script,
             _direct(
@@ -215,38 +194,38 @@ abstract contract MigrationScript {
             )
         );
 
-        // Calls 17 to 24: both voting apps raise support and quorum to the contract maximum, then the ACL
+        // Calls 15 to 22: both voting apps raise support and quorum to the contract maximum, then the ACL
         // removes the managers of MODIFY_SUPPORT_ROLE and MODIFY_QUORUM_ROLE on both. The primary Agent holds the
         // two modify roles. Support before quorum: the app rejects a quorum above the support.
-        // Call 17, primary voting app support
+        // Call 15, primary voting app support
         script = bytes.concat(
             script, _viaAgent(address(VOTING), abi.encodeCall(IApi3Voting.changeSupportRequiredPct, (MAX_PCT)))
         );
-        // Call 18, primary voting app quorum
+        // Call 16, primary voting app quorum
         script = bytes.concat(
             script, _viaAgent(address(VOTING), abi.encodeCall(IApi3Voting.changeMinAcceptQuorumPct, (MAX_PCT)))
         );
-        // Call 19, secondary voting app support
+        // Call 17, secondary voting app support
         script = bytes.concat(
             script,
             _viaAgent(address(VOTING_SECONDARY), abi.encodeCall(IApi3Voting.changeSupportRequiredPct, (MAX_PCT)))
         );
-        // Call 20, secondary voting app quorum
+        // Call 18, secondary voting app quorum
         script = bytes.concat(
             script,
             _viaAgent(address(VOTING_SECONDARY), abi.encodeCall(IApi3Voting.changeMinAcceptQuorumPct, (MAX_PCT)))
         );
-        // Call 21, primary voting app MODIFY_SUPPORT_ROLE manager
+        // Call 19, primary voting app MODIFY_SUPPORT_ROLE manager
         script = bytes.concat(
             script,
             _direct(address(ACL), abi.encodeCall(IACL.removePermissionManager, (address(VOTING), MODIFY_SUPPORT_ROLE)))
         );
-        // Call 22, primary voting app MODIFY_QUORUM_ROLE manager
+        // Call 20, primary voting app MODIFY_QUORUM_ROLE manager
         script = bytes.concat(
             script,
             _direct(address(ACL), abi.encodeCall(IACL.removePermissionManager, (address(VOTING), MODIFY_QUORUM_ROLE)))
         );
-        // Call 23, secondary voting app MODIFY_SUPPORT_ROLE manager
+        // Call 21, secondary voting app MODIFY_SUPPORT_ROLE manager
         script = bytes.concat(
             script,
             _direct(
@@ -254,7 +233,7 @@ abstract contract MigrationScript {
                 abi.encodeCall(IACL.removePermissionManager, (address(VOTING_SECONDARY), MODIFY_SUPPORT_ROLE))
             )
         );
-        // Call 24, secondary voting app MODIFY_QUORUM_ROLE manager
+        // Call 22, secondary voting app MODIFY_QUORUM_ROLE manager
         script = bytes.concat(
             script,
             _direct(
@@ -263,14 +242,14 @@ abstract contract MigrationScript {
             )
         );
 
-        // Calls 25 to 28: the ACL revokes the primary voting app's APP_MANAGER_ROLE on the Kernel and
+        // Calls 23 to 26: the ACL revokes the primary voting app's APP_MANAGER_ROLE on the Kernel and
         // CREATE_PERMISSIONS_ROLE on the ACL, and removes both managers. These are the DAO's root permissions, both
-        // held and managed by the primary voting app. Removing a permission's manager, as calls 15, 16 and 21 to 24 do,
+        // held and managed by the primary voting app. Removing a permission's manager, as calls 13, 14 and 19 to 22 do,
         // is exactly what lets a holder of CREATE_PERMISSIONS_ROLE create that permission again, and APP_MANAGER_ROLE
-        // swaps the code behind any app. Both were reachable only through a primary vote, so calls 13 to 16 already
+        // swaps the code behind any app. Both were reachable only through a primary vote, so calls 11 to 14 already
         // put them out of reach. These calls make that hold even for a vote created through a route not seen, or one
         // still open at execution. Revoke before removing the manager, and the ACL's own role last.
-        // Call 25, revoke APP_MANAGER_ROLE on the Kernel
+        // Call 23, revoke APP_MANAGER_ROLE on the Kernel
         script = bytes.concat(
             script,
             _direct(
@@ -278,12 +257,12 @@ abstract contract MigrationScript {
                 abi.encodeCall(IACL.revokePermission, (address(VOTING), address(KERNEL), APP_MANAGER_ROLE))
             )
         );
-        // Call 26, remove its manager
+        // Call 24, remove its manager
         script = bytes.concat(
             script,
             _direct(address(ACL), abi.encodeCall(IACL.removePermissionManager, (address(KERNEL), APP_MANAGER_ROLE)))
         );
-        // Call 27, revoke CREATE_PERMISSIONS_ROLE on the ACL
+        // Call 25, revoke CREATE_PERMISSIONS_ROLE on the ACL
         script = bytes.concat(
             script,
             _direct(
@@ -291,7 +270,7 @@ abstract contract MigrationScript {
                 abi.encodeCall(IACL.revokePermission, (address(VOTING), address(ACL), CREATE_PERMISSIONS_ROLE))
             )
         );
-        // Call 28, remove its manager
+        // Call 26, remove its manager
         script = bytes.concat(
             script,
             _direct(address(ACL), abi.encodeCall(IACL.removePermissionManager, (address(ACL), CREATE_PERMISSIONS_ROLE)))

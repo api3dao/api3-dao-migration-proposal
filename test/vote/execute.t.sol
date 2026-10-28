@@ -10,7 +10,7 @@ contract Vote_Execute_Test is Base_Test {
         // it should land the total supply on exactly 200,000,000 API3.
         // it should make the dead address the token owner and leave no minter.
         // it should empty the primary Agent into the Treasury Safe.
-        // it should empty the secondary Agent into the Agent Safe.
+        // it should move the secondary Agent's USDC and ETH to the Agent Safe.
         // it should credit the Treasury Safe with the mint and the primary Agent's API3.
         executeNow();
         _assertOutcome();
