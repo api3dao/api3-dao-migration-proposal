@@ -36,9 +36,8 @@ abstract contract Base_Test is Test, MigrationScript {
         agentSafeUsdcBefore = USDC.balanceOf(AGENT_SAFE);
         agentSafeEthBefore = AGENT_SAFE.balance;
 
-        // Posts with `CreateVote.s.sol`'s flags: vote yea at creation without executing in the same call.
         vm.prank(_proposer());
-        voteId = VOTING.newVote(script, metadata, true, false);
+        voteId = VOTING.newVote(script, metadata, CAST_VOTE, EXECUTES_IF_DECIDED);
         _pass(voteId);
     }
 

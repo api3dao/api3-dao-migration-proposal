@@ -9,10 +9,6 @@ import "../src/MigrationScript.sol";
 /// `newVote` calldata the Vault Safe submits. The title and description come from `proposal/title.txt` and
 /// `proposal/description.md`. Nothing is sent.
 contract CreateVote is Script, MigrationScript {
-    /// The Vault votes yea when it posts, without executing the proposal in the creation call.
-    bool constant CAST_VOTE = true;
-    bool constant EXECUTES_IF_DECIDED = false;
-
     function run() external {
         require(TREASURY_SAFE.code.length > 0, "CreateVote: the Treasury Safe is not deployed");
         Amounts memory amounts = readAmounts();
