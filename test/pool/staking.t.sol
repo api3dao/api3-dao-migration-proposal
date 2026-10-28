@@ -119,11 +119,12 @@ contract Pool_Staking_Test is Executed_Test {
         // it should advance the reward cursor without minting on the first call after the migration.
         // it should return the scheduled half and keep the rest staked.
         // it should withdraw the unlocked part and take the same amount back as stake.
-        // it should hold nothing locked a year after the last mint and withdraw everything, except API3 the old TimelockManager contract deposited for the staker, which only that contract releases.
+        // it should hold nothing locked a year after the last mint and withdraw everything, except the vesting API3 the old TimelockManager contract deposited for the staker.
         address staker = _stakerWithoutPendingUnstake();
         // The TimelockManager is the contract that held the vesting API3 of early recipients and deposited it in the pool
-        // for them. Those deposits stay in the pool until that contract releases them, independently of the reward
-        // lock. Zero for the current voter set.
+        // for them. The pool holds it as vesting until `updateTimelockStatus` releases it on the timelock's schedule,
+        // independently of the reward lock. Anyone can call that for any user, the test does not. Zero for the current
+        // voter set.
         (, uint256 timelocked,,,,,) = POOL.getUser(staker);
         uint256 walletBefore = API3.balanceOf(staker);
 
