@@ -4,7 +4,7 @@ This repository builds the primary vote that moves API3 governance from the lega
 
 ## Verify the proposal
 
-Check that the posted vote is exactly the proposal this code builds. Every step is read-only.
+Check that the posted vote is exactly the proposal this code builds. Every step is read-only. [proposal/generated/](proposal/generated/) holds the bytes, their hash, the metadata and the amounts as built for posting.
 
 1. Install [Foundry](https://getfoundry.sh), [bulloak](https://github.com/alexfertel/bulloak), and Node.
 2. Fetch the pinned `forge-std`:
@@ -34,7 +34,7 @@ You do not need to configure an RPC. `foundry.toml` holds a rate-limited mainnet
 
 The bytes carry four balances read when they were built: the mint, the primary Agent's API3, the secondary Agent's USDC, and the secondary Agent's ETH. One wei of API3 burned, or of USDC or ETH sent to the secondary Agent, between the build and the posting changes what the code builds at the snapshot block. The check in step 4 then fails, although the vote is still exactly what the code built.
 
-In that case, pass the block the bytes were built at. `<BUILD_BLOCK>` is `block` in the `proposal/generated/amounts.json` that `CreateVote.s.sol` wrote:
+In that case, pass the block the bytes were built at. `<BUILD_BLOCK>` is `block` in [proposal/generated/amounts.json](proposal/generated/amounts.json), which `CreateVote.s.sol` wrote when it built the bytes:
 
 ```bash
 forge script script/VerifyVote.s.sol --sig "run(uint256,uint256)" <VOTE_ID> <BUILD_BLOCK>
