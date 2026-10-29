@@ -60,7 +60,7 @@ The secondary Agent's PNK and wPOKT are not among them. Secondary votes 133 and 
 
 <!-- script-table -->
 
-Built at block 26287968, 26 calls, 4316 bytes.
+Built at block 26297075, 26 calls, 4316 bytes.
 
 | # | caller | target | call |
 | - | ------ | ------ | ---- |
@@ -71,7 +71,7 @@ Built at block 26287968, 26 calls, 4316 bytes.
 | 5 | voting app | primary Agent `0xd9f80bdb37e6bad114d747e60ce6d2aaf26704ae` | `transfer`(API3 token `0x0b38210ea11411557c13457d4da7dc6ea731b88a`, Treasury Safe `0xb7fa2cb302c5dc127e61f27b92bec411cbf0ae4a`, 6083873527701856751553400 (6,083,873.527701 API3 token)) |
 | 6 | via primary Agent | API3 token `0x0b38210ea11411557c13457d4da7dc6ea731b88a` | `updateMinterStatus`(API3 pool `0x6dd655f10d4b9e242ae186d9050b68f725c76d76`, false) |
 | 7 | via primary Agent | API3 token `0x0b38210ea11411557c13457d4da7dc6ea731b88a` | `updateMinterStatus`(primary Agent `0xd9f80bdb37e6bad114d747e60ce6d2aaf26704ae`, true) |
-| 8 | via primary Agent | API3 token `0x0b38210ea11411557c13457d4da7dc6ea731b88a` | `mint`(Treasury Safe `0xb7fa2cb302c5dc127e61f27b92bec411cbf0ae4a`, 10876876674326757910422715 (10,876,876.674326 API3 token)) |
+| 8 | via primary Agent | API3 token `0x0b38210ea11411557c13457d4da7dc6ea731b88a` | `mint`(Treasury Safe `0xb7fa2cb302c5dc127e61f27b92bec411cbf0ae4a`, 9929000265761969887400384 (9,929,000.265761 API3 token)) |
 | 9 | via primary Agent | API3 token `0x0b38210ea11411557c13457d4da7dc6ea731b88a` | `updateMinterStatus`(primary Agent `0xd9f80bdb37e6bad114d747e60ce6d2aaf26704ae`, false) |
 | 10 | via primary Agent | API3 token `0x0b38210ea11411557c13457d4da7dc6ea731b88a` | `transferOwnership`(dead address `0x000000000000000000000000000000000000dead`) |
 | 11 | voting app | ACL `0x1e7ecc6d3b5b4cfdfc71cb7c3ea9ac4a55f4195a` | `revokePermission`(any address `0xffffffffffffffffffffffffffffffffffffffff`, primary voting app `0xdb6c812e439ce5c740570578681ea7aadba5170b`, CREATE_VOTES_ROLE) |
